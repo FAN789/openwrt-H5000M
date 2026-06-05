@@ -15,19 +15,6 @@ uci -q set network.1_1.metric='50'
 uci -q set network.1_1v6.metric='50'
 uci -q commit network
 
-logger -t h5000m-defaults "将 5G 备用出口加入 WAN 防火墙区域"
-for zone in $(uci -q show firewall | sed -n 's/^\(firewall\.[^.]*\)=zone$/\1/p'); do
-	if [ "$(uci -q get "${zone}.name")" = "wan" ]; then
-		uci -q del_list "${zone}.network=1_1"
-		uci -q del_list "${zone}.network=1_1v6"
-		uci -q del_list "${zone}.network=wan5g"
-		uci -q del_list "${zone}.network=wan5g6"
-		uci -q add_list "${zone}.network=1_1"
-		uci -q add_list "${zone}.network=1_1v6"
-	fi
-done
-uci -q commit firewall
-
 logger -t h5000m-defaults "设置 root 默认密码"
 if command -v chpasswd >/dev/null 2>&1; then
 	echo 'root:admin' | chpasswd
