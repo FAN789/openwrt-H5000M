@@ -97,6 +97,14 @@ bash ./scripts/prepare-source.sh v24.10.6
 - 接口热插拔时自动清理旧的 `wan5g`/`wan5g6` 残留，避免重复接口
 - 首次启动时删除固件内的 QModem 和 video 软件源条目。
 
+固件内置 `luci-app-h5000m-netmode`，可在 LuCI 的“网络 / H5000M 出口优先级”
+中切换：
+
+- 有线 WAN 优先：`wan`/`wan6` metric 为 `10`，`USB`/`USBv6` 和 QModem
+  modem-device metric 为 `50`，并关闭 `USBv6` 默认路由。
+- 5G 模块优先：`USB`/`USBv6` 和 QModem modem-device metric 为 `10`，
+  `wan`/`wan6` metric 为 `50`，并开启 `USBv6` 默认路由。
+
 ## 可选软件包
 
 workflow 可以选择集成 QModem、PassWall、MosDNS、UPnP 和 HomeProxy。

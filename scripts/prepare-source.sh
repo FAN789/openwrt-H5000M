@@ -72,6 +72,11 @@ echo "写入默认 LAN IP、root 密码、WAN 优先级和软件源清理脚本"
 mkdir -p "${SRC_DIR}/files"
 cp -a "${ROOT_DIR}/files/." "${SRC_DIR}/files/"
 
+echo "写入 H5000M 自定义软件包"
+rm -rf "${SRC_DIR}/package/h5000m-custom"
+mkdir -p "${SRC_DIR}/package/h5000m-custom"
+cp -a "${ROOT_DIR}/packages/." "${SRC_DIR}/package/h5000m-custom/"
+
 echo "ImmortalWrt 源码已准备完成：${SRC_DIR}"
 echo "当前源码版本：${REF}"
 echo "后续本地编译步骤："

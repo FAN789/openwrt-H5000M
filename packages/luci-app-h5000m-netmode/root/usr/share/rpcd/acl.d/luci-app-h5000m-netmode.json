@@ -1,0 +1,17 @@
+{
+	"luci-app-h5000m-netmode": {
+		"description": "Grant access to H5000M network priority settings",
+		"read": {
+			"file": {
+				"/usr/sbin/h5000m-netmode": [ "exec" ]
+			},
+			"uci": [ "h5000m_netmode", "network", "qmodem" ]
+		},
+		"write": {
+			"file": {
+				"/usr/sbin/h5000m-netmode": [ "exec" ]
+			},
+			"uci": [ "h5000m_netmode", "network", "qmodem" ]
+		}
+	}
+}

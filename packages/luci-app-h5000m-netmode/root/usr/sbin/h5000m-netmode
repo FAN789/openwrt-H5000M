@@ -1,0 +1,42 @@
+#!/bin/sh
+
+mode="$(uci -q get h5000m_netmode.settings.mode || echo wan_first)"
+
+case "${mode}" in
+	modem_first)
+		wan_metric='50'
+		modem_metric='10'
+		usbv6_defaultroute='1'
+		;;
+	*)
+		mode='wan_first'
+		wan_metric='10'
+		modem_metric='50'
+		usbv6_defaultroute='0'
+		;;
+esac
+
+uci -q set h5000m_netmode.settings='settings'
+uci -q set h5000m_netmode.settings.mode="${mode}"
+uci -q commit h5000m_netmode
+
+uci -q set network.wan.metric="${wan_metric}"
+uci -q set network.wan6.metric="${wan_metric}"
+uci -q set network.USB.metric="${modem_metric}"
+uci -q set network.USBv6.metric="${modem_metric}"
+uci -q set network.USBv6.defaultroute="${usbv6_defaultroute}"
+uci -q delete network.wan5g
+uci -q delete network.wan5g6
+uci -q commit network
+
+for modem in $(uci -q show qmodem | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
+	uci -q set "${modem}.metric=${modem_metric}"
+done
+uci -q commit qmodem
+
+if [ "${1:-}" = "apply" ]; then
+	/etc/init.d/network reload >/dev/null 2>&1 || true
+	/etc/init.d/qmodem restart >/dev/null 2>&1 || true
+fi
+
+exit 0

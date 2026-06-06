@@ -6,19 +6,9 @@ uci -q set network.lan.ipaddr='192.168.10.1'
 uci -q set network.lan.netmask='255.255.255.0'
 
 logger -t h5000m-defaults "优化 WAN 与 5G 备用出口"
-uci -q set network.wan.metric='10'
-uci -q set network.wan6.metric='10'
-uci -q delete network.wan5g
-uci -q delete network.wan5g6
-
-uci -q set network.USB.metric='50'
-uci -q set network.USBv6.metric='50'
-uci -q commit network
-
-for modem in $(uci -q show qmodem | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
-	uci -q set "${modem}.metric=50"
-done
-uci -q commit qmodem
+if [ -x /usr/sbin/h5000m-netmode ]; then
+	/usr/sbin/h5000m-netmode >/dev/null 2>&1 || true
+fi
 
 logger -t h5000m-defaults "设置 root 默认密码"
 if command -v chpasswd >/dev/null 2>&1; then

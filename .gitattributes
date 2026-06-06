@@ -5,3 +5,5 @@
 *.patch text eol=lf
 files/etc/uci-defaults/* text eol=lf
 files/etc/hotplug.d/**/* text eol=lf
+packages/**/root/etc/uci-defaults/* text eol=lf
+packages/**/root/usr/sbin/* text eol=lf

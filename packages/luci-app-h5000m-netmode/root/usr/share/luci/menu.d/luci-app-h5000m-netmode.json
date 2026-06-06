@@ -1,0 +1,14 @@
+{
+	"admin/network/h5000m_netmode": {
+		"title": "H5000M 出口优先级",
+		"order": 90,
+		"action": {
+			"type": "view",
+			"path": "h5000m/netmode"
+		},
+		"depends": {
+			"acl": [ "luci-app-h5000m-netmode" ],
+			"uci": { "h5000m_netmode": true }
+		}
+	}
+}

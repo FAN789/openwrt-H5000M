@@ -30,6 +30,7 @@ if [ ! -f "${CONFIG_FILE}" ]; then
 fi
 
 echo "检查 defconfig 后的最终勾选项"
+require_config "CONFIG_PACKAGE_luci-app-h5000m-netmode"
 
 if [ "${INCLUDE_QMODEM}" = "true" ]; then
   require_config "CONFIG_PACKAGE_qmodem"
