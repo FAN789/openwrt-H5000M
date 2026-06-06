@@ -311,8 +311,8 @@ def main() -> int:
     mt7987a = root / "target/linux/mediatek/dts/mt7987a.dtsi"
     if not mt7987a.exists():
         raise SystemExit(
-            "当前 ImmortalWrt 版本缺少 target/linux/mediatek/dts/mt7987a.dtsi。\n"
-            "H5000M 需要 MT7987 基础平台支持。请使用 v25.12.0/master，或先回移植 MT7987 支持。"
+            "当前 OpenWrt 版本缺少 target/linux/mediatek/dts/mt7987a.dtsi。\n"
+            "H5000M 需要 MT7987 基础平台支持。请使用 v25.12.4/master，或先回移植 MT7987 支持。"
         )
 
     dts_path = root / "target/linux/mediatek/dts/mt7987a-hiveton-h5000m.dts"

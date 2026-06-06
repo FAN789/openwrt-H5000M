@@ -1,18 +1,10 @@
-name: 构建 H5000M 固件
+name: 构建 openwrt-H5000M 固件
 
 on:
   workflow_dispatch:
     inputs:
-      source_tree:
-        description: 主源码
-        required: true
-        type: choice
-        default: openwrt
-        options:
-          - openwrt
-          - immortalwrt
-      source_ref:
-        description: 主源码分支、标签或提交，例如 v25.12.4、master
+      openwrt_ref:
+        description: OpenWrt 官方源码分支、标签或提交，例如 v25.12.4、master
         required: true
         default: v25.12.4
       runner_type:
@@ -48,7 +40,7 @@ on:
         type: boolean
         default: true
       upnp:
-        description: 集成 luci-app-upnp，来源主源码官方 feeds
+        description: 集成 luci-app-upnp，来源 OpenWrt 官方 feeds
         required: true
         type: boolean
         default: true
@@ -97,7 +89,7 @@ jobs:
             squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim \
             wget xmlto xxd zlib1g-dev zstd
 
-      - name: 准备主源码
+      - name: 准备 OpenWrt 官方源码
         env:
           INCLUDE_QMODEM: ${{ inputs.qmodem && 'true' || 'false' }}
           INCLUDE_PASSWALL: ${{ inputs.passwall && 'true' || 'false' }}
@@ -106,7 +98,7 @@ jobs:
           INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
           INCLUDE_SMALL_PACKAGE: ${{ inputs.small_package && 'true' || 'false' }}
-        run: bash ./scripts/prepare-source.sh "${{ inputs.source_tree }}" "${{ inputs.source_ref }}"
+        run: bash ./scripts/prepare-source.sh "${{ inputs.openwrt_ref }}"
 
       - name: 更新并安装软件源
         working-directory: openwrt
@@ -159,16 +151,16 @@ jobs:
       - name: 上传固件产物
         uses: actions/upload-artifact@v4
         with:
-          name: h5000m-${{ inputs.source_tree }}-${{ inputs.source_ref }}
+          name: openwrt-H5000M-${{ inputs.openwrt_ref }}
           path: |
             openwrt/bin/targets/mediatek/filogic/*
 
       - name: 准备发布信息
         if: ${{ inputs.create_release }}
         run: |
-          safe_ref="$(printf '%s' '${{ inputs.source_ref }}' | tr '/:@ ' '----')"
-          echo "RELEASE_TAG=h5000m-${{ inputs.source_tree }}-${safe_ref}-${{ github.run_number }}" >> "$GITHUB_ENV"
-          echo "RELEASE_NAME=H5000M ${{ inputs.source_tree }} ${{ inputs.source_ref }} 第 ${{ github.run_number }} 次构建" >> "$GITHUB_ENV"
+          safe_ref="$(printf '%s' '${{ inputs.openwrt_ref }}' | tr '/:@ ' '----')"
+          echo "RELEASE_TAG=openwrt-H5000M-${safe_ref}-${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME=openwrt-H5000M ${{ inputs.openwrt_ref }} 第 ${{ github.run_number }} 次构建" >> "$GITHUB_ENV"
 
       - name: 发布到 GitHub Releases
         if: ${{ inputs.create_release }}
@@ -190,7 +182,7 @@ jobs:
           else
             gh release create "${RELEASE_TAG}" "${files[@]}" \
               --title "${RELEASE_NAME}" \
-              --notes "H5000M ${{ inputs.source_tree }} ${{ inputs.source_ref }} build ${{ github.run_number }}" \
+              --notes "openwrt-H5000M ${{ inputs.openwrt_ref }} build ${{ github.run_number }}" \
               --target "${GITHUB_SHA}" \
               --latest=false
           fi
@@ -201,8 +193,8 @@ jobs:
     runs-on: self-hosted
     env:
       USE_CCACHE: "1"
-      CCACHE_DIR: /home/builder/immortalwrt-h5000-cache/ccache
-      DL_DIR: /home/builder/immortalwrt-h5000-cache/dl
+      CCACHE_DIR: /home/builder/openwrt-h5000m-cache/ccache
+      DL_DIR: /home/builder/openwrt-h5000m-cache/dl
 
     steps:
       - name: 检出构建项目
@@ -227,7 +219,7 @@ jobs:
           ccache -s -v | sed -n '1,80p'
           du -sh "${DL_DIR}" "${CCACHE_DIR}" 2>/dev/null || true
 
-      - name: 准备主源码
+      - name: 准备 OpenWrt 官方源码
         env:
           INCLUDE_QMODEM: ${{ inputs.qmodem && 'true' || 'false' }}
           INCLUDE_PASSWALL: ${{ inputs.passwall && 'true' || 'false' }}
@@ -236,7 +228,7 @@ jobs:
           INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
           INCLUDE_SMALL_PACKAGE: ${{ inputs.small_package && 'true' || 'false' }}
-        run: bash ./scripts/prepare-source.sh "${{ inputs.source_tree }}" "${{ inputs.source_ref }}"
+        run: bash ./scripts/prepare-source.sh "${{ inputs.openwrt_ref }}"
 
       - name: 更新并安装软件源
         working-directory: openwrt
@@ -304,16 +296,16 @@ jobs:
       - name: 上传固件产物
         uses: actions/upload-artifact@v4
         with:
-          name: h5000m-${{ inputs.source_tree }}-${{ inputs.source_ref }}
+          name: openwrt-H5000M-${{ inputs.openwrt_ref }}
           path: |
             openwrt/bin/targets/mediatek/filogic/*
 
       - name: 准备发布信息
         if: ${{ inputs.create_release }}
         run: |
-          safe_ref="$(printf '%s' '${{ inputs.source_ref }}' | tr '/:@ ' '----')"
-          echo "RELEASE_TAG=h5000m-${{ inputs.source_tree }}-${safe_ref}-${{ github.run_number }}" >> "$GITHUB_ENV"
-          echo "RELEASE_NAME=H5000M ${{ inputs.source_tree }} ${{ inputs.source_ref }} 第 ${{ github.run_number }} 次构建" >> "$GITHUB_ENV"
+          safe_ref="$(printf '%s' '${{ inputs.openwrt_ref }}' | tr '/:@ ' '----')"
+          echo "RELEASE_TAG=openwrt-H5000M-${safe_ref}-${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME=openwrt-H5000M ${{ inputs.openwrt_ref }} 第 ${{ github.run_number }} 次构建" >> "$GITHUB_ENV"
 
       - name: 发布到 GitHub Releases
         if: ${{ inputs.create_release }}
@@ -335,7 +327,7 @@ jobs:
           else
             gh release create "${RELEASE_TAG}" "${files[@]}" \
               --title "${RELEASE_NAME}" \
-              --notes "H5000M ${{ inputs.source_tree }} ${{ inputs.source_ref }} build ${{ github.run_number }}" \
+              --notes "openwrt-H5000M ${{ inputs.openwrt_ref }} build ${{ github.run_number }}" \
               --target "${GITHUB_SHA}" \
               --latest=false
           fi

@@ -3,35 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_DIR="${ROOT_DIR}/openwrt"
-
-SOURCE_TREE="${SOURCE_TREE:-${1:-openwrt}}"
-REF="${2:-${SOURCE_REF:-${OPENWRT_REF:-v25.12.4}}}"
-
-if [ "$#" -eq 1 ]; then
-  case "${SOURCE_TREE}" in
-    openwrt|immortalwrt)
-      ;;
-    *)
-      REF="${SOURCE_TREE}"
-      SOURCE_TREE="${SOURCE_TREE_DEFAULT:-openwrt}"
-      ;;
-  esac
-fi
-
-case "${SOURCE_TREE}" in
-  openwrt)
-    REPO_URL="${OPENWRT_REPO:-https://github.com/openwrt/openwrt.git}"
-    TREE_NAME="OpenWrt"
-    ;;
-  immortalwrt)
-    REPO_URL="${IMMORTALWRT_REPO:-https://github.com/immortalwrt/immortalwrt.git}"
-    TREE_NAME="ImmortalWrt"
-    ;;
-  *)
-    echo "未知主源码：${SOURCE_TREE}，可选值：openwrt / immortalwrt"
-    exit 1
-    ;;
-esac
+REF="${1:-${OPENWRT_REF:-v25.12.4}}"
+REPO_URL="${OPENWRT_REPO:-https://github.com/openwrt/openwrt.git}"
 
 INCLUDE_QMODEM="${INCLUDE_QMODEM:-false}"
 INCLUDE_PASSWALL="${INCLUDE_PASSWALL:-false}"
@@ -42,12 +15,12 @@ INCLUDE_HOMEPROXY="${INCLUDE_HOMEPROXY:-false}"
 INCLUDE_SMALL_PACKAGE="${INCLUDE_SMALL_PACKAGE:-false}"
 
 if [ -d "${SRC_DIR}/.git" ]; then
-  echo "更新已有 ${TREE_NAME} 源码：${REF}"
+  echo "更新已有 OpenWrt 官方源码：${REF}"
   git -C "${SRC_DIR}" remote set-url origin "${REPO_URL}"
   git -C "${SRC_DIR}" fetch --tags --depth=1 origin "${REF}"
   git -C "${SRC_DIR}" checkout --detach FETCH_HEAD
 else
-  echo "克隆 ${TREE_NAME} 源码：${REF}"
+  echo "克隆 OpenWrt 官方源码：${REF}"
   git clone --depth=1 --branch "${REF}" "${REPO_URL}" "${SRC_DIR}"
 fi
 
@@ -103,8 +76,7 @@ rm -rf "${SRC_DIR}/package/h5000m-custom"
 mkdir -p "${SRC_DIR}/package/h5000m-custom"
 cp -a "${ROOT_DIR}/packages/." "${SRC_DIR}/package/h5000m-custom/"
 
-echo "${TREE_NAME} 源码已准备完成：${SRC_DIR}"
-echo "当前主源码：${SOURCE_TREE}"
+echo "OpenWrt 官方源码已准备完成：${SRC_DIR}"
 echo "当前源码版本：${REF}"
 echo "后续本地编译步骤："
 echo "  cd ${SRC_DIR}"
