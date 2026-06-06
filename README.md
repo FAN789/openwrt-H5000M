@@ -8,7 +8,7 @@ https://github.com/openwrt/openwrt/pull/21398
 当前需要特别注意：
 
 - 官方 PR 使用 `KERNEL_LOADADDR := 0x40000000`，本项目保持一致。
-- 官方 PR 中 H5000M 的基础网口定义是 `ucidef_set_interfaces_lan_wan eth1 eth0`，这会让 `eth1` 作为 LAN、`eth0` 作为 WAN。当前项目暂时不自动切换这个方向，避免刷机后物理 LAN/WAN 口角色变化。
+- 官方 PR 中 H5000M 的基础网口定义是 `ucidef_set_interfaces_lan_wan eth1 eth0`，这会让 `eth1` 作为 LAN、`eth0` 作为 WAN。本项目已按这个方向生成默认网口布局。
 - 官方 PR 目前只把两个 WiFi 指示灯交给 OpenWrt 管理，其他 LED 可能由硬件或厂商服务控制。本项目保留现有 LED 尝试，不把它视为上游已完整解决。
 - 如果 WiFi 异常、校准异常或首次刷入后无线表现不正常，需要检查 factory 分区 EEPROM。PR 中提到部分机器 factory 分区可能为空，需谨慎处理，不建议自动写入。
 

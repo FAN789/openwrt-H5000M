@@ -329,20 +329,20 @@ def main() -> int:
         require(path)
 
     text = read(network)
-    if "\thiveton,h5000m|\\" not in text and "\thiveton,h5000m)" not in text:
-        mt7987_case = "\tmediatek,mt7987*)\n\t\tucidef_set_interfaces_lan_wan \"eth0 hnat\" eth1\n\t\t;;"
-        h5000m_case = "\thiveton,h5000m|\\\n" + mt7987_case
+    mt7987_case = "\tmediatek,mt7987*)\n\t\tucidef_set_interfaces_lan_wan \"eth0 hnat\" eth1\n\t\t;;"
+    h5000m_case = "\thiveton,h5000m)\n\t\tucidef_set_interfaces_lan_wan eth1 eth0\n\t\t;;\n"
+    if h5000m_case.strip() not in text:
         if mt7987_case in text:
-            text = text.replace(mt7987_case, h5000m_case, 1)
+            text = text.replace(mt7987_case, h5000m_case + mt7987_case, 1)
         else:
-            text = insert_once(text, "\topenembed,som7981|\\\n", "\thiveton,h5000m|\\\n", "network interface")
+            text = insert_once(text, "\topenembed,som7981|\\\n", h5000m_case, "network interface")
     mac_case = '''\thiveton,h5000m)
 \t\tlan_mac=$(macaddr_generate_from_mmc_cid mmcblk0)
 \t\twan_mac=$(macaddr_add "$lan_mac" 1)
 \t\tlabel_mac=$wan_mac
 \t\t;;
 '''
-    if "\thiveton,h5000m)" not in text:
+    if mac_case.strip() not in text:
         if "\tjiorouter,ax6000-jidu6101)" in text:
             text = text.replace("\tjiorouter,ax6000-jidu6101)", mac_case + "\tjiorouter,ax6000-jidu6101)", 1)
         else:

@@ -6,6 +6,7 @@ print_status() {
 	local wan_metric wan6_metric usb_metric usbv6_metric qmodem_metric
 	local wan_defaultroute wan6_defaultroute usb_defaultroute usbv6_defaultroute
 	local default4 default6 active4 active6
+	local wan_device wan6_device usb_device usbv6_device
 
 	wan_metric="$(uci -q get network.wan.metric || echo "")"
 	wan6_metric="$(uci -q get network.wan6.metric || echo "")"
@@ -20,14 +21,18 @@ print_status() {
 		qmodem_metric="$(uci -q get "${modem}.metric" || echo "")"
 		[ -n "${qmodem_metric}" ] && break
 	done
+	wan_device="$(uci -q get network.wan.device || uci -q get network.wan.ifname || echo wan)"
+	wan6_device="$(uci -q get network.wan6.device || uci -q get network.wan6.ifname || echo wan6)"
+	usb_device="$(uci -q get network.USB.device || uci -q get network.USB.ifname || echo USB)"
+	usbv6_device="$(uci -q get network.USBv6.device || uci -q get network.USBv6.ifname || echo USBv6)"
 	default4="$(ip route show default 2>/dev/null | head -n 1)"
 	default6="$(ip -6 route show default 2>/dev/null | head -n 1)"
 
 	case "${default4}" in
-		*' dev eth1 '*|*' dev wan '*)
+		*" dev ${wan_device} "*|*' dev wan '*)
 			active4='wan'
 			;;
-		*' dev eth2 '*|*' dev USB '*)
+		*" dev ${usb_device} "*|*' dev USB '*)
 			active4='USB'
 			;;
 		*)
@@ -36,10 +41,10 @@ print_status() {
 	esac
 
 	case "${default6}" in
-		*' dev eth1 '*|*' dev wan6 '*)
+		*" dev ${wan6_device} "*|*' dev wan6 '*|*" dev ${wan_device} "*)
 			active6='wan6'
 			;;
-		*' dev eth2 '*|*' dev USBv6 '*)
+		*" dev ${usbv6_device} "*|*' dev USBv6 '*|*" dev ${usb_device} "*)
 			active6='USBv6'
 			;;
 		*)
