@@ -20,6 +20,15 @@ append_config() {
   cat >> "${CONFIG_FILE}"
 }
 
+append_config <<'EOF'
+CONFIG_LUCI_LANG_zh_Hans=y
+CONFIG_PACKAGE_luci-app-package-manager=y
+CONFIG_PACKAGE_luci-app-opkg=y
+CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn=y
+EOF
+
 if [ "${INCLUDE_QMODEM}" = "true" ]; then
   echo "启用 QModem"
   append_config <<'EOF'

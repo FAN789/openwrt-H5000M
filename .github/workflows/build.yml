@@ -127,6 +127,7 @@ jobs:
         run: make download -j"$(nproc)"
 
       - name: 编译固件
+        id: compile
         working-directory: openwrt
         run: |
           if [ -n "${{ inputs.make_jobs }}" ]; then
@@ -136,7 +137,7 @@ jobs:
           fi
 
       - name: 输出失败详情
-        if: ${{ failure() }}
+        if: ${{ failure() && steps.compile.outcome == 'failure' }}
         working-directory: openwrt
         run: make -j1 V=s
 
@@ -249,6 +250,7 @@ jobs:
           du -sh "${DL_DIR}" 2>/dev/null || true
 
       - name: 编译固件
+        id: compile
         working-directory: openwrt
         run: |
           if [ -n "${{ inputs.make_jobs }}" ]; then
@@ -258,7 +260,7 @@ jobs:
           fi
 
       - name: 输出失败详情
-        if: ${{ failure() }}
+        if: ${{ failure() && steps.compile.outcome == 'failure' }}
         working-directory: openwrt
         run: make DL_DIR="${DL_DIR}" -j1 V=s
 
