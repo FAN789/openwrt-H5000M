@@ -172,8 +172,8 @@ jobs:
     runs-on: self-hosted
     env:
       USE_CCACHE: "1"
-      CCACHE_DIR: /home/builder/openwrt-cache/ccache
-      DL_DIR: /home/builder/openwrt-cache/dl
+      CCACHE_DIR: /home/builder/immortalwrt-h5000-cache/ccache
+      DL_DIR: /home/builder/immortalwrt-h5000-cache/dl
 
     steps:
       - name: 检出构建项目
