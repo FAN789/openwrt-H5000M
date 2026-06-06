@@ -5,6 +5,17 @@ uci -q set network.lan.proto='static'
 uci -q set network.lan.ipaddr='192.168.10.1'
 uci -q set network.lan.netmask='255.255.255.0'
 
+logger -t h5000m-defaults "写入 H5000M QModem 默认槽位"
+if [ -f /etc/config/qmodem ]; then
+	uci -q set qmodem.usb0='modem-slot'
+	uci -q set qmodem.usb0.slot='2-1'
+	uci -q set qmodem.usb0.type='usb'
+	uci -q set qmodem.usb0.alias='USB'
+	uci -q set qmodem.main.enable_pcie_scan='0'
+	uci -q set qmodem.main.start_delay='9'
+	uci -q commit qmodem
+fi
+
 logger -t h5000m-defaults "优化 WAN 与 5G 备用出口"
 if [ -x /usr/sbin/h5000m-netmode ]; then
 	/usr/sbin/h5000m-netmode >/dev/null 2>&1 || true

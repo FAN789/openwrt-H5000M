@@ -62,6 +62,21 @@ DTS = r'''// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 		};
 	};
 
+	pwm_led: pwm-leds {
+		compatible = "pwm-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pwm_pins>;
+		status = "okay";
+
+		led {
+			label = "pwm_led";
+			pwms = <&pwm 0 50000 0>;
+			max-brightness = <255>;
+			active-low;
+			linux,default-trigger = "default-on";
+		};
+	};
+
 	reg_3p3v: regulator-3p3v {
 		compatible = "regulator-fixed";
 		regulator-name = "fixed-3.3V";
@@ -86,6 +101,8 @@ DTS = r'''// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 };
 
 &fan {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm_fan_pins>;
 	pwms = <&pwm 1 50000 0>;
 	status = "okay";
 };
@@ -189,6 +206,13 @@ DTS = r'''// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 };
 
 &pio {
+	pwm_pins: pwm-pins {
+		mux {
+			function = "pwm";
+			groups = "pwm0";
+		};
+	};
+
 	pwm_fan_pins: pwm-fan-pins {
 		mux {
 			function = "pwm";
@@ -199,8 +223,6 @@ DTS = r'''// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 
 &pwm {
 	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pwm_fan_pins>;
 };
 
 &ssusb {
@@ -229,7 +251,8 @@ define Device/hiveton_h5000m
   DEVICE_ALT0_MODEL := H5000M
   DEVICE_DTS := mt7987a-hiveton-h5000m
   DEVICE_DTS_DIR := ../dts
-  DEVICE_PACKAGES := kmod-hwmon-pwmfan kmod-usb3 mt7987-2p5g-phy-firmware \
+  DEVICE_PACKAGES := kmod-hwmon-pwmfan kmod-leds-gpio kmod-leds-pwm \
+	kmod-usb3 mt7987-2p5g-phy-firmware \
 	kmod-mt7996e kmod-mt7992-23-firmware f2fsck mkf2fs
   KERNEL_LOADADDR := 0x40000000
   IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
@@ -288,15 +311,22 @@ def main() -> int:
     write(dts_path, DTS + "\n")
 
     network = root / "target/linux/mediatek/filogic/base-files/etc/board.d/02_network"
+    leds = root / "target/linux/mediatek/filogic/base-files/etc/board.d/01_leds"
     wifi_mac = root / "target/linux/mediatek/filogic/base-files/etc/hotplug.d/ieee80211/11_fix_wifi_mac"
     platform = root / "target/linux/mediatek/filogic/base-files/lib/upgrade/platform.sh"
     filogic = root / "target/linux/mediatek/image/filogic.mk"
 
-    for path in (network, wifi_mac, platform, filogic):
+    for path in (network, leds, wifi_mac, platform, filogic):
         require(path)
 
     text = read(network)
-    text = insert_once(text, "\topenembed,som7981|\\\n", "\thiveton,h5000m|\\\n", "network interface")
+    if "\thiveton,h5000m|\\" not in text and "\thiveton,h5000m)" not in text:
+        mt7987_case = "\tmediatek,mt7987*)\n\t\tucidef_set_interfaces_lan_wan \"eth0 hnat\" eth1\n\t\t;;"
+        h5000m_case = "\thiveton,h5000m|\\\n" + mt7987_case
+        if mt7987_case in text:
+            text = text.replace(mt7987_case, h5000m_case, 1)
+        else:
+            text = insert_once(text, "\topenembed,som7981|\\\n", "\thiveton,h5000m|\\\n", "network interface")
     mac_case = '''\thiveton,h5000m)
 \t\tlan_mac=$(macaddr_generate_from_mmc_cid mmcblk0)
 \t\twan_mac=$(macaddr_add "$lan_mac" 1)
@@ -309,6 +339,17 @@ def main() -> int:
         else:
             text = text.replace("\tmercusys,mr80x-v3|\\\n", mac_case + "\tmercusys,mr80x-v3|\\\n", 1)
     write(network, text)
+
+    text = read(leds)
+    led_case = '''\thiveton,h5000m)
+\t\tucidef_set_led_netdev "wifi2g" "WiFi2G" "amber:wlan-2ghz" "phy0-ap0" "link tx rx"
+\t\tucidef_set_led_netdev "wifi5g" "WiFi5G" "blue:wlan-5ghz" "phy1-ap0" "link tx rx"
+\t\tucidef_set_led_default "pwm_led" "PWM LED" "pwm_led" "1"
+\t\t;;
+'''
+    if "\thiveton,h5000m)" not in text:
+        text = insert_once(text, "\topenembed,som7981)", led_case, "LED defaults")
+    write(leds, text)
 
     text = read(wifi_mac)
     wifi_case = '''\thiveton,h5000m)
