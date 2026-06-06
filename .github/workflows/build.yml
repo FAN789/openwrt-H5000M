@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       openwrt_ref:
-        description: OpenWrt 官方源码分支、标签或提交，例如 v25.12.4、master
+        description: OpenWrt 版本
         required: true
         default: v25.12.4
       runner_type:
-        description: 编译运行环境
+        description: 编译环境
         required: true
         type: choice
         default: github-hosted
@@ -16,46 +16,41 @@ on:
           - github-hosted
           - self-hosted
       make_jobs:
-        description: 并行编译线程数；留空表示使用全部可用核心
+        description: 编译线程，留空使用全部核心
         required: false
         default: ""
       qmodem:
-        description: 集成 QModem 相关包，来源 FUjr/QModem
-        required: true
-        type: boolean
-        default: true
-      passwall:
-        description: 集成 luci-app-passwall，来源 kenzok8/small-package
-        required: true
-        type: boolean
-        default: true
-      mosdns:
-        description: 集成 mosdns 本体，来源 kenzok8/small-package
-        required: true
-        type: boolean
-        default: true
-      mosdns_luci:
-        description: 集成 luci-app-mosdns 页面及所需依赖，来源 kenzok8/small-package
+        description: "1. QModem：5G 模块管理"
         required: true
         type: boolean
         default: true
       upnp:
-        description: 集成 luci-app-upnp，来源 OpenWrt 官方 feeds
+        description: "2. UPnP：端口自动映射"
         required: true
         type: boolean
         default: true
+      passwall:
+        description: "3. PassWall：代理插件"
+        required: true
+        type: boolean
+        default: false
       homeproxy:
-        description: 集成 luci-app-homeproxy，来源 kenzok8/small-package
+        description: "4. HomeProxy：代理插件"
+        required: true
+        type: boolean
+        default: false
+      mosdns:
+        description: "5. MosDNS：DNS 分流插件"
         required: true
         type: boolean
         default: false
       small_package:
-        description: 额外追加 kenzok8/small-package 插件库；勾选 PassWall、MosDNS 或 HomeProxy 时会自动添加
+        description: 额外插件库，勾选 3/4/5 时自动添加
         required: true
         type: boolean
         default: false
       create_release:
-        description: 编译完成后发布到 GitHub Releases
+        description: 发布 Releases
         required: true
         type: boolean
         default: true
@@ -70,10 +65,10 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: 检出构建项目
+      - name: 检出项目
         uses: actions/checkout@v4
 
-      - name: 安装编译依赖
+      - name: 安装依赖
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -89,43 +84,40 @@ jobs:
             squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim \
             wget xmlto xxd zlib1g-dev zstd
 
-      - name: 准备 OpenWrt 官方源码
+      - name: 准备 OpenWrt 源码
         env:
           INCLUDE_QMODEM: ${{ inputs.qmodem && 'true' || 'false' }}
           INCLUDE_PASSWALL: ${{ inputs.passwall && 'true' || 'false' }}
           INCLUDE_MOSDNS: ${{ inputs.mosdns && 'true' || 'false' }}
-          INCLUDE_MOSDNS_LUCI: ${{ inputs.mosdns_luci && 'true' || 'false' }}
           INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
           INCLUDE_SMALL_PACKAGE: ${{ inputs.small_package && 'true' || 'false' }}
         run: bash ./scripts/prepare-source.sh "${{ inputs.openwrt_ref }}"
 
-      - name: 更新并安装软件源
+      - name: 更新软件源
         working-directory: openwrt
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: 写入勾选的软件包
+      - name: 写入插件选择
         env:
           INCLUDE_QMODEM: ${{ inputs.qmodem && 'true' || 'false' }}
           INCLUDE_PASSWALL: ${{ inputs.passwall && 'true' || 'false' }}
           INCLUDE_MOSDNS: ${{ inputs.mosdns && 'true' || 'false' }}
-          INCLUDE_MOSDNS_LUCI: ${{ inputs.mosdns_luci && 'true' || 'false' }}
           INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
         run: bash ./scripts/apply-package-options.sh
 
-      - name: 生成最终配置
+      - name: 生成配置
         working-directory: openwrt
         run: make defconfig
 
-      - name: 检查勾选的软件包
+      - name: 检查插件
         env:
           INCLUDE_QMODEM: ${{ inputs.qmodem && 'true' || 'false' }}
           INCLUDE_PASSWALL: ${{ inputs.passwall && 'true' || 'false' }}
           INCLUDE_MOSDNS: ${{ inputs.mosdns && 'true' || 'false' }}
-          INCLUDE_MOSDNS_LUCI: ${{ inputs.mosdns_luci && 'true' || 'false' }}
           INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
         run: bash ./scripts/verify-package-options.sh
@@ -148,21 +140,21 @@ jobs:
         working-directory: openwrt
         run: make -j1 V=s
 
-      - name: 上传固件产物
+      - name: 上传固件
         uses: actions/upload-artifact@v4
         with:
           name: openwrt-H5000M-${{ inputs.openwrt_ref }}
           path: |
             openwrt/bin/targets/mediatek/filogic/*
 
-      - name: 准备发布信息
+      - name: 准备发布
         if: ${{ inputs.create_release }}
         run: |
           safe_ref="$(printf '%s' '${{ inputs.openwrt_ref }}' | tr '/:@ ' '----')"
           echo "RELEASE_TAG=openwrt-H5000M-${safe_ref}-${{ github.run_number }}" >> "$GITHUB_ENV"
           echo "RELEASE_NAME=openwrt-H5000M ${{ inputs.openwrt_ref }} 第 ${{ github.run_number }} 次构建" >> "$GITHUB_ENV"
 
-      - name: 发布到 GitHub Releases
+      - name: 发布 Releases
         if: ${{ inputs.create_release }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -197,10 +189,10 @@ jobs:
       DL_DIR: /home/builder/openwrt-h5000m-cache/dl
 
     steps:
-      - name: 检出构建项目
+      - name: 检出项目
         uses: actions/checkout@v4
 
-      - name: 检查本地 Runner 环境
+      - name: 检查本地环境
         run: |
           if [ "$(uname -s)" != "Linux" ]; then
             echo "本地 Runner 必须运行在 Linux、Ubuntu 或 WSL2 环境。"
@@ -208,7 +200,7 @@ jobs:
           fi
           echo "本地 Runner 检查通过。"
 
-      - name: 配置本地缓存与代理
+      - name: 配置缓存与代理
         run: |
           mkdir -p "${CCACHE_DIR}" "${DL_DIR}"
           ccache --set-config=max_size=80G || ccache -M 80G
@@ -219,34 +211,32 @@ jobs:
           ccache -s -v | sed -n '1,80p'
           du -sh "${DL_DIR}" "${CCACHE_DIR}" 2>/dev/null || true
 
-      - name: 准备 OpenWrt 官方源码
+      - name: 准备 OpenWrt 源码
         env:
           INCLUDE_QMODEM: ${{ inputs.qmodem && 'true' || 'false' }}
           INCLUDE_PASSWALL: ${{ inputs.passwall && 'true' || 'false' }}
           INCLUDE_MOSDNS: ${{ inputs.mosdns && 'true' || 'false' }}
-          INCLUDE_MOSDNS_LUCI: ${{ inputs.mosdns_luci && 'true' || 'false' }}
           INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
           INCLUDE_SMALL_PACKAGE: ${{ inputs.small_package && 'true' || 'false' }}
         run: bash ./scripts/prepare-source.sh "${{ inputs.openwrt_ref }}"
 
-      - name: 更新并安装软件源
+      - name: 更新软件源
         working-directory: openwrt
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: 写入勾选的软件包
+      - name: 写入插件选择
         env:
           INCLUDE_QMODEM: ${{ inputs.qmodem && 'true' || 'false' }}
           INCLUDE_PASSWALL: ${{ inputs.passwall && 'true' || 'false' }}
           INCLUDE_MOSDNS: ${{ inputs.mosdns && 'true' || 'false' }}
-          INCLUDE_MOSDNS_LUCI: ${{ inputs.mosdns_luci && 'true' || 'false' }}
           INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
         run: bash ./scripts/apply-package-options.sh
 
-      - name: 生成最终配置
+      - name: 生成配置
         working-directory: openwrt
         run: |
           {
@@ -257,12 +247,11 @@ jobs:
           make defconfig
           grep -E '^CONFIG_DEVEL=y|^CONFIG_CCACHE=y|^CONFIG_CCACHE_DIR=|^CONFIG_DOWNLOAD_FOLDER=|^CONFIG_TARGET_' .config | sed -n '1,80p'
 
-      - name: 检查勾选的软件包
+      - name: 检查插件
         env:
           INCLUDE_QMODEM: ${{ inputs.qmodem && 'true' || 'false' }}
           INCLUDE_PASSWALL: ${{ inputs.passwall && 'true' || 'false' }}
           INCLUDE_MOSDNS: ${{ inputs.mosdns && 'true' || 'false' }}
-          INCLUDE_MOSDNS_LUCI: ${{ inputs.mosdns_luci && 'true' || 'false' }}
           INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
         run: bash ./scripts/verify-package-options.sh
@@ -287,27 +276,27 @@ jobs:
         working-directory: openwrt
         run: make DL_DIR="${DL_DIR}" -j1 V=s
 
-      - name: 输出本地缓存统计
+      - name: 输出缓存统计
         if: ${{ always() }}
         run: |
           ccache -s -v | sed -n '1,100p'
           du -sh "${DL_DIR}" "${CCACHE_DIR}" 2>/dev/null || true
 
-      - name: 上传固件产物
+      - name: 上传固件
         uses: actions/upload-artifact@v4
         with:
           name: openwrt-H5000M-${{ inputs.openwrt_ref }}
           path: |
             openwrt/bin/targets/mediatek/filogic/*
 
-      - name: 准备发布信息
+      - name: 准备发布
         if: ${{ inputs.create_release }}
         run: |
           safe_ref="$(printf '%s' '${{ inputs.openwrt_ref }}' | tr '/:@ ' '----')"
           echo "RELEASE_TAG=openwrt-H5000M-${safe_ref}-${{ github.run_number }}" >> "$GITHUB_ENV"
           echo "RELEASE_NAME=openwrt-H5000M ${{ inputs.openwrt_ref }} 第 ${{ github.run_number }} 次构建" >> "$GITHUB_ENV"
 
-      - name: 发布到 GitHub Releases
+      - name: 发布 Releases
         if: ${{ inputs.create_release }}
         env:
           GH_TOKEN: ${{ github.token }}

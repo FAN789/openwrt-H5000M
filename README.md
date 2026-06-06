@@ -18,7 +18,7 @@
 - HomeProxy：`kenzok8/small-package`
 - UPnP：OpenWrt 官方 feeds
 
-勾选 PassWall、MosDNS、MosDNS LuCI、HomeProxy 任意一个时，会自动添加 `kenzok8/small-package`。`small_package` 选项用于额外追加整个插件库。
+勾选 PassWall、MosDNS、HomeProxy 任意一个时，会自动添加 `kenzok8/small-package`。`small_package` 选项用于额外追加整个插件库。
 
 ## GitHub Actions 构建
 
@@ -29,8 +29,10 @@
 - `openwrt_ref`: `v25.12.4`
 - `runner_type`: `github-hosted` 或 `self-hosted`
 - `qmodem`: 默认开启
-- `passwall`、`mosdns`、`mosdns_luci`、`upnp`: 默认开启
-- `homeproxy`: 按需开启
+- `upnp`: 默认开启
+- `passwall`: 默认关闭
+- `homeproxy`: 默认关闭
+- `mosdns`: 默认关闭，包含 mosdns 本体和 luci-app-mosdns
 - `small_package`: 按需开启
 - `create_release`: 默认开启
 - `make_jobs`: 留空，或填写 `4`、`8` 这类线程数

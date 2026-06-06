@@ -9,7 +9,6 @@ REPO_URL="${OPENWRT_REPO:-https://github.com/openwrt/openwrt.git}"
 INCLUDE_QMODEM="${INCLUDE_QMODEM:-false}"
 INCLUDE_PASSWALL="${INCLUDE_PASSWALL:-false}"
 INCLUDE_MOSDNS="${INCLUDE_MOSDNS:-false}"
-INCLUDE_MOSDNS_LUCI="${INCLUDE_MOSDNS_LUCI:-false}"
 INCLUDE_UPNP="${INCLUDE_UPNP:-false}"
 INCLUDE_HOMEPROXY="${INCLUDE_HOMEPROXY:-false}"
 INCLUDE_SMALL_PACKAGE="${INCLUDE_SMALL_PACKAGE:-false}"
@@ -51,7 +50,6 @@ append_feed_once() {
 need_small_package=false
 if [ "${INCLUDE_PASSWALL}" = "true" ] || \
    [ "${INCLUDE_MOSDNS}" = "true" ] || \
-   [ "${INCLUDE_MOSDNS_LUCI}" = "true" ] || \
    [ "${INCLUDE_HOMEPROXY}" = "true" ] || \
    [ "${INCLUDE_SMALL_PACKAGE}" = "true" ]; then
   need_small_package=true
@@ -82,7 +80,7 @@ echo "后续本地编译步骤："
 echo "  cd ${SRC_DIR}"
 echo "  ./scripts/feeds update -a"
 echo "  ./scripts/feeds install -a"
-echo "  INCLUDE_QMODEM=${INCLUDE_QMODEM} INCLUDE_PASSWALL=${INCLUDE_PASSWALL} INCLUDE_MOSDNS=${INCLUDE_MOSDNS} INCLUDE_MOSDNS_LUCI=${INCLUDE_MOSDNS_LUCI} INCLUDE_UPNP=${INCLUDE_UPNP} INCLUDE_HOMEPROXY=${INCLUDE_HOMEPROXY} bash ${ROOT_DIR}/scripts/apply-package-options.sh"
+echo "  INCLUDE_QMODEM=${INCLUDE_QMODEM} INCLUDE_PASSWALL=${INCLUDE_PASSWALL} INCLUDE_MOSDNS=${INCLUDE_MOSDNS} INCLUDE_UPNP=${INCLUDE_UPNP} INCLUDE_HOMEPROXY=${INCLUDE_HOMEPROXY} bash ${ROOT_DIR}/scripts/apply-package-options.sh"
 echo "  make defconfig"
 echo "  make download -j\$(nproc)"
 echo "  make -j\$(nproc)"

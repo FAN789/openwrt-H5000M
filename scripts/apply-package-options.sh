@@ -8,7 +8,6 @@ CONFIG_FILE="${SRC_DIR}/.config"
 INCLUDE_QMODEM="${INCLUDE_QMODEM:-false}"
 INCLUDE_PASSWALL="${INCLUDE_PASSWALL:-false}"
 INCLUDE_MOSDNS="${INCLUDE_MOSDNS:-false}"
-INCLUDE_MOSDNS_LUCI="${INCLUDE_MOSDNS_LUCI:-false}"
 INCLUDE_UPNP="${INCLUDE_UPNP:-false}"
 INCLUDE_HOMEPROXY="${INCLUDE_HOMEPROXY:-false}"
 
@@ -22,7 +21,7 @@ append_config() {
 }
 
 if [ "${INCLUDE_QMODEM}" = "true" ]; then
-  echo "启用 QModem 相关包"
+  echo "启用 QModem"
   append_config <<'EOF'
 CONFIG_PACKAGE_qmodem=y
 CONFIG_PACKAGE_luci-app-qmodem-next=y
@@ -53,6 +52,13 @@ CONFIG_PACKAGE_luci-app-qmodem_USE_TOM_CUSTOMIZED_QUECTEL_CM=y
 EOF
 fi
 
+if [ "${INCLUDE_UPNP}" = "true" ]; then
+  echo "启用 UPnP"
+  append_config <<'EOF'
+CONFIG_PACKAGE_luci-app-upnp=y
+EOF
+fi
+
 if [ "${INCLUDE_PASSWALL}" = "true" ]; then
   echo "启用 PassWall"
   append_config <<'EOF'
@@ -66,23 +72,15 @@ CONFIG_PACKAGE_kmod-tun=y
 EOF
 fi
 
-if [ "${INCLUDE_MOSDNS}" = "true" ]; then
-  echo "启用 MosDNS"
+if [ "${INCLUDE_HOMEPROXY}" = "true" ]; then
+  echo "启用 HomeProxy"
   append_config <<'EOF'
-CONFIG_PACKAGE_mosdns=y
+CONFIG_PACKAGE_luci-app-homeproxy=y
 EOF
 fi
 
-if [ "${INCLUDE_MOSDNS_LUCI}" = "true" ]; then
-  echo "启用 MosDNS LuCI 页面及依赖"
-  MOSDNS_MAKEFILE="${SRC_DIR}/package/feeds/packages/mosdns/Makefile"
-  if [ -f "${MOSDNS_MAKEFILE}" ]; then
-    sed -i \
-      -e '/$(INSTALL_DIR) $(1)\/etc\/init.d/d' \
-      -e '/$(INSTALL_BIN) $(PKG_BUILD_DIR)\/scripts\/openwrt\/mosdns-init-openwrt $(1)\/etc\/init.d\/mosdns/d' \
-      "${MOSDNS_MAKEFILE}"
-    echo "已避免 mosdns init 脚本与 luci-app-mosdns 冲突"
-  fi
+if [ "${INCLUDE_MOSDNS}" = "true" ]; then
+  echo "启用 MosDNS"
   append_config <<'EOF'
 CONFIG_PACKAGE_mosdns=y
 CONFIG_PACKAGE_luci-app-mosdns=y
@@ -90,20 +88,6 @@ CONFIG_PACKAGE_v2dat=y
 CONFIG_PACKAGE_v2ray-geoip=y
 CONFIG_PACKAGE_v2ray-geosite=y
 CONFIG_PACKAGE_curl=y
-EOF
-fi
-
-if [ "${INCLUDE_UPNP}" = "true" ]; then
-  echo "启用 UPnP"
-  append_config <<'EOF'
-CONFIG_PACKAGE_luci-app-upnp=y
-EOF
-fi
-
-if [ "${INCLUDE_HOMEPROXY}" = "true" ]; then
-  echo "启用 HomeProxy"
-  append_config <<'EOF'
-CONFIG_PACKAGE_luci-app-homeproxy=y
 EOF
 fi
 
