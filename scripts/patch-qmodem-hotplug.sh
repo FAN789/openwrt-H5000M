@@ -56,7 +56,7 @@ if anchor not in text:
 
 text = text.replace(anchor, anchor + insert, 1)
 
-anchor = '''if [ "${slot_type}" = "usb" ]; then
+anchor = '''logger -t modem_hotplug "net slot: ${slot} action: ${ACTION} slot_type: ${slot_type}"
 '''
 insert = r'''if [ "${slot_type}" = "pcie" ] && [ "$(uci -q get qmodem.main.enable_pcie_scan || echo 0)" != "1" ]; then
     exit
