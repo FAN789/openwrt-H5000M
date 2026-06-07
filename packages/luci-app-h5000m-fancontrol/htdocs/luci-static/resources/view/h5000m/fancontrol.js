@@ -75,7 +75,7 @@ return view.extend({
 			'.h5000m-fan-card-hint{font-size:11px;color:var(--text-color-low,#888);margin-top:6px;word-break:break-word}',
 			'.h5000m-fan-note{margin-top:10px;color:var(--text-color-medium,#666)}',
 			'.h5000m-fan-curve-box{border:1px solid var(--border-color-medium,#d8d8d8);border-radius:8px;background:var(--background-color-high,#fff);padding:12px;overflow:hidden}',
-			'.h5000m-fan-curve svg{width:100%;max-width:640px;height:auto;display:block}',
+			'.h5000m-fan-curve-canvas{width:100%;max-width:720px;height:240px;display:block}',
 			'.h5000m-fan-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;color:var(--text-color-medium,#666);font-size:12px}',
 			'.h5000m-fan-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}',
 			'.h5000m-fan-slider{display:flex;align-items:center;gap:10px;max-width:460px}',
@@ -119,6 +119,128 @@ return view.extend({
 			return maxPwm;
 
 		return Math.round(minPwm + (temp - low) * (maxPwm - minPwm) / (high - low));
+	},
+
+	drawCurveCanvas: function(canvasId, config) {
+		var canvas = document.getElementById(canvasId);
+		var ratio, width, height, ctx, left, top, right, bottom, plotW, plotH;
+		var tempMin, tempMax, lowX, highX, minY, maxY, manualY, currentX, currentY;
+		var xForTemp, yForPwm;
+
+		if (!canvas)
+			return;
+
+		width = canvas.clientWidth || 640;
+		height = canvas.clientHeight || 240;
+		ratio = window.devicePixelRatio || 1;
+
+		canvas.width = Math.round(width * ratio);
+		canvas.height = Math.round(height * ratio);
+
+		ctx = canvas.getContext('2d');
+		ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+		ctx.clearRect(0, 0, width, height);
+
+		left = 52;
+		top = 20;
+		right = 22;
+		bottom = 42;
+		plotW = width - left - right;
+		plotH = height - top - bottom;
+
+		tempMin = Math.max(0, config.low - 15);
+		tempMax = Math.min(120, config.high + 15);
+		if (tempMax <= tempMin)
+			tempMax = tempMin + 1;
+
+		xForTemp = L.bind(function(temp) {
+			return left + (this.clamp(temp, tempMin, tempMax) - tempMin) * plotW / (tempMax - tempMin);
+		}, this);
+
+		yForPwm = L.bind(function(pwm) {
+			return top + (255 - this.clamp(pwm, 0, 255)) * plotH / 255;
+		}, this);
+
+		lowX = xForTemp(config.low);
+		highX = xForTemp(config.high);
+		minY = yForPwm(config.minPwm);
+		maxY = yForPwm(config.maxPwm);
+
+		ctx.fillStyle = '#fafafa';
+		ctx.strokeStyle = '#dedede';
+		ctx.lineWidth = 1;
+		ctx.fillRect(left, top, plotW, plotH);
+		ctx.strokeRect(left, top, plotW, plotH);
+
+		ctx.strokeStyle = '#eeeeee';
+		ctx.beginPath();
+		for (var i = 1; i < 4; i++) {
+			ctx.moveTo(left, top + plotH * i / 4);
+			ctx.lineTo(left + plotW, top + plotH * i / 4);
+			ctx.moveTo(left + plotW * i / 4, top);
+			ctx.lineTo(left + plotW * i / 4, top + plotH);
+		}
+		ctx.stroke();
+
+		ctx.strokeStyle = '#cfcfcf';
+		ctx.setLineDash([4, 4]);
+		ctx.beginPath();
+		ctx.moveTo(lowX, top);
+		ctx.lineTo(lowX, top + plotH);
+		ctx.moveTo(highX, top);
+		ctx.lineTo(highX, top + plotH);
+		ctx.stroke();
+		ctx.setLineDash([]);
+
+		ctx.strokeStyle = '#2d8a5f';
+		ctx.lineWidth = 3;
+		ctx.lineCap = 'round';
+		ctx.lineJoin = 'round';
+		ctx.beginPath();
+		ctx.moveTo(left, minY);
+		ctx.lineTo(lowX, minY);
+		ctx.lineTo(highX, maxY);
+		ctx.lineTo(left + plotW, maxY);
+		ctx.stroke();
+
+		if (config.mode === 'manual') {
+			manualY = yForPwm(config.manualPwm);
+			ctx.strokeStyle = '#3b7ddd';
+			ctx.lineWidth = 2;
+			ctx.setLineDash([6, 4]);
+			ctx.beginPath();
+			ctx.moveTo(left, manualY);
+			ctx.lineTo(left + plotW, manualY);
+			ctx.stroke();
+			ctx.setLineDash([]);
+		}
+
+		if (!isNaN(config.currentTemp)) {
+			if (isNaN(config.currentPwm))
+				config.currentPwm = config.mode === 'manual'
+					? config.manualPwm
+					: this.pwmAtTemp(config.currentTemp, config.low, config.high, config.minPwm, config.maxPwm);
+
+			currentX = xForTemp(config.currentTemp);
+			currentY = yForPwm(config.currentPwm);
+			ctx.fillStyle = '#d14545';
+			ctx.beginPath();
+			ctx.arc(currentX, currentY, 5, 0, Math.PI * 2);
+			ctx.fill();
+		}
+
+		ctx.fillStyle = '#666';
+		ctx.font = '12px sans-serif';
+		ctx.textBaseline = 'middle';
+		ctx.fillText('255', 18, top);
+		ctx.fillText('0', 28, top + plotH);
+		ctx.fillText('PWM', left + plotW - 30, top + 12);
+		ctx.textBaseline = 'top';
+		ctx.fillText(_('%s 掳C').format(tempMin), left, top + plotH + 12);
+		ctx.fillText(_('%s 掳C').format(config.low), lowX - 18, top + plotH + 12);
+		ctx.fillText(_('%s 掳C').format(config.high), highX - 18, top + plotH + 12);
+		ctx.fillText(_('%s 掳C').format(tempMax), left + plotW - 42, top + plotH + 12);
+		ctx.fillText(_('娓╁害'), left + plotW - 28, top + plotH + 28);
 	},
 
 	curvePanel: function(data) {
@@ -206,10 +328,36 @@ return view.extend({
 		if (marker)
 			children.push(marker);
 
+		var canvasId = 'h5000m-fan-curve-canvas';
+		var self = this;
+		var canvasConfig = {
+			mode: mode,
+			low: low,
+			high: high,
+			minPwm: minPwm,
+			maxPwm: maxPwm,
+			manualPwm: manualPwm,
+			currentTemp: currentTemp,
+			currentPwm: currentPwm
+		};
+
+		window.h5000mFanCurveDraw = function(nextManualPwm) {
+			if (typeof nextManualPwm === 'number') {
+				canvasConfig.mode = 'manual';
+				canvasConfig.manualPwm = nextManualPwm;
+				canvasConfig.currentPwm = nextManualPwm;
+			}
+			self.drawCurveCanvas(canvasId, canvasConfig);
+		};
+
+		window.setTimeout(function() {
+			window.h5000mFanCurveDraw();
+		}, 0);
+
 		return E('div', { 'class': 'h5000m-fan-curve' }, [
 			E('h3', _('风扇曲线')),
 			E('div', { 'class': 'h5000m-fan-curve-box' }, [
-				E('svg', { viewBox: '0 0 430 208', role: 'img', 'aria-label': _('风扇 PWM 曲线') }, children),
+				E('canvas', { id: canvasId, 'class': 'h5000m-fan-curve-canvas', width: '720', height: '240' }),
 				E('div', { 'class': 'h5000m-fan-legend' }, [
 					E('span', [ E('span', { 'class': 'h5000m-fan-swatch', style: 'background:#2d8a5f' }), _('自动曲线') ]),
 					mode === 'manual' ? E('span', [ E('span', { 'class': 'h5000m-fan-swatch', style: 'background:#3b7ddd' }), _('手动 PWM') ]) : null,
@@ -227,14 +375,10 @@ return view.extend({
 			var rangeId = inputId + '-range';
 			var numberId = inputId + '-number';
 			var updateCurve = function(next) {
-				var line = document.getElementById('h5000m-fan-manual-line');
 				var pwm = Math.max(0, Math.min(255, parseInt(next, 10) || 0));
-				var y = 18 + (255 - pwm) * 150 / 255;
 
-				if (line) {
-					line.setAttribute('y1', y);
-					line.setAttribute('y2', y);
-				}
+				if (window.h5000mFanCurveDraw)
+					window.h5000mFanCurveDraw(pwm);
 			};
 
 			return E('div', { 'class': 'h5000m-fan-slider' }, [
