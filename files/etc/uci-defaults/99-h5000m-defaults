@@ -1,6 +1,6 @@
 #!/bin/sh
 
-logger -t h5000m-defaults "设置默认时区和本地化"
+logger -t h5000m-defaults "Set default timezone and locale defaults"
 uci -q set system.@system[0].zonename='Asia/Shanghai'
 uci -q set system.@system[0].timezone='CST-8'
 uci -q get system.ntp >/dev/null 2>&1 || uci -q set system.ntp='timeserver'
@@ -14,7 +14,7 @@ uci -q commit system
 
 if [ -f /etc/config/luci ]; then
 	uci -q get luci.main >/dev/null 2>&1 || uci -q set luci.main='core'
-	uci -q set luci.main.lang='zh_Hans'
+	uci -q set luci.main.lang='auto'
 	uci -q commit luci
 fi
 
@@ -28,12 +28,12 @@ valid_mac() {
 	echo "$1" | grep -Eq '^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}$'
 }
 
-logger -t h5000m-defaults "设置默认 LAN 地址为 192.168.10.1"
+logger -t h5000m-defaults "Set default LAN address to 192.168.10.1"
 uci -q set network.lan.proto='static'
 uci -q set network.lan.ipaddr='192.168.10.1'
 uci -q set network.lan.netmask='255.255.255.0'
 
-logger -t h5000m-defaults "从 U-Boot 环境写入默认 MAC 地址"
+logger -t h5000m-defaults "Apply default MAC addresses from U-Boot environment"
 lan_mac="$(read_uboot_env ethaddr || true)"
 wan_mac="$(read_uboot_env eth1addr || true)"
 if valid_mac "${lan_mac}" && valid_mac "${wan_mac}"; then
@@ -46,10 +46,10 @@ if valid_mac "${lan_mac}" && valid_mac "${wan_mac}"; then
 	uci -q set network.wan.macaddr="${wan_mac}"
 	uci -q commit network
 else
-	logger -t h5000m-defaults "U-Boot MAC 地址无效或不存在，保留系统默认 MAC"
+	logger -t h5000m-defaults "U-Boot MAC addresses are missing or invalid, keeping system defaults"
 fi
 
-logger -t h5000m-defaults "写入 H5000M QModem 默认槽位"
+logger -t h5000m-defaults "Write default H5000M QModem slot"
 if [ -f /etc/config/qmodem ]; then
 	uci -q set qmodem.usb0='modem-slot'
 	uci -q set qmodem.usb0.slot='2-1'
@@ -63,19 +63,19 @@ if [ -f /etc/config/qmodem ]; then
 	uci -q commit qmodem
 fi
 
-logger -t h5000m-defaults "优化 WAN 与 5G 备用出口"
+logger -t h5000m-defaults "Apply WAN and 5G default route policy"
 if [ -x /usr/sbin/h5000m-netmode ]; then
 	/usr/sbin/h5000m-netmode >/dev/null 2>&1 || true
 fi
 
-logger -t h5000m-defaults "设置 root 默认密码"
+logger -t h5000m-defaults "Set default root password"
 if command -v chpasswd >/dev/null 2>&1; then
 	echo 'root:admin' | chpasswd
 else
 	(printf 'admin\nadmin\n' | passwd root) >/dev/null 2>&1 || true
 fi
 
-logger -t h5000m-defaults "设置默认 WiFi 密码"
+logger -t h5000m-defaults "Set default WiFi SSID and password"
 if ! uci -q show wireless | grep -q '=wifi-iface'; then
 	wifi config >/dev/null 2>&1 || true
 fi
@@ -93,7 +93,7 @@ for section in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-ifac
 done
 uci -q commit wireless
 
-logger -t h5000m-defaults "清理固件内的 QModem 和 video apk 软件源"
+logger -t h5000m-defaults "Remove build-only apk feed entries"
 if [ -f /etc/apk/repositories.d/distfeeds.list ]; then
 	sed -i '/\/qmodem\//d;/ qmodem[ _-]/d;/ qmodem$/d;/\/small_package\//d;/ small_package[ _-]/d;/ small_package$/d;/\/video\//d' /etc/apk/repositories.d/distfeeds.list
 fi

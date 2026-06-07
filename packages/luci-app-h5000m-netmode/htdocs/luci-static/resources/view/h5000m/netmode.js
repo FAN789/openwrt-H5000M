@@ -26,23 +26,33 @@ return view.extend({
 
 	statusTable: function(data) {
 		var labels = {
-			wan_first: _('有线 WAN 优先，5G 备用'),
-			modem_first: _('5G 模块优先，有线 WAN 备用'),
-			wan_only: _('仅有线 WAN'),
-			modem_only: _('仅 5G 模块')
+			wan_first: _('Wired WAN first, 5G fallback'),
+			modem_first: _('5G modem first, wired WAN fallback'),
+			wan_only: _('Wired WAN only'),
+			modem_only: _('5G modem only')
 		};
 		var mode = labels[data.mode] || labels.wan_first;
 
 		return E('div', { 'class': 'cbi-section' }, [
-			E('h3', _('当前状态')),
+			E('h3', _('Current Status')),
 			E('table', { 'class': 'table' }, [
-				E('tr', [ E('td', _('当前模式')), E('td', mode) ]),
-				E('tr', [ E('td', _('IPv4 默认出口')), E('td', data.active4 || _('未知')) ]),
-				E('tr', [ E('td', _('IPv6 默认出口')), E('td', data.active6 || _('无')) ]),
-				E('tr', [ E('td', _('有线 WAN metric')), E('td', '%s / %s'.format(data.wan_metric || '-', data.wan6_metric || '-')) ]),
-				E('tr', [ E('td', _('5G 模块 metric')), E('td', '%s / %s'.format(data.usb_metric || '-', data.usbv6_metric || '-')) ]),
-				E('tr', [ E('td', _('有线 WAN 默认路由')), E('td', '%s / %s'.format(data.wan_defaultroute == '0' ? _('关闭') : _('开启'), data.wan6_defaultroute == '0' ? _('关闭') : _('开启'))) ]),
-				E('tr', [ E('td', _('5G 模块默认路由')), E('td', '%s / %s'.format(data.usb_defaultroute == '0' ? _('关闭') : _('开启'), data.usbv6_defaultroute == '0' ? _('关闭') : _('开启'))) ])
+				E('tr', [ E('td', _('Current Mode')), E('td', mode) ]),
+				E('tr', [ E('td', _('IPv4 Default Route')), E('td', data.active4 || _('Unknown')) ]),
+				E('tr', [ E('td', _('IPv6 Default Route')), E('td', data.active6 || _('None')) ]),
+				E('tr', [ E('td', _('Wired WAN Metric')), E('td', '%s / %s'.format(data.wan_metric || '-', data.wan6_metric || '-')) ]),
+				E('tr', [ E('td', _('5G Modem Metric')), E('td', '%s / %s'.format(data.usb_metric || '-', data.usbv6_metric || '-')) ]),
+				E('tr', [
+					E('td', _('Wired WAN Default Route')),
+					E('td', '%s / %s'.format(
+						data.wan_defaultroute == '0' ? _('Disabled') : _('Enabled'),
+						data.wan6_defaultroute == '0' ? _('Disabled') : _('Enabled')))
+				]),
+				E('tr', [
+					E('td', _('5G Modem Default Route')),
+					E('td', '%s / %s'.format(
+						data.usb_defaultroute == '0' ? _('Disabled') : _('Enabled'),
+						data.usbv6_defaultroute == '0' ? _('Disabled') : _('Enabled')))
+				])
 			])
 		]);
 	},
@@ -51,26 +61,26 @@ return view.extend({
 		var m, s, o;
 		var status = this.parseStatus(res);
 
-		m = new form.Map('h5000m_netmode', _('出口优先级'));
-		m.description = _('切换有线 WAN 与 5G 模块的默认出口优先级。');
+		m = new form.Map('h5000m_netmode', _('Exit Priority'));
+		m.description = _('Switch the default route priority between wired WAN and the 5G modem.');
 
 		s = m.section(form.NamedSection, 'settings', 'settings');
 		s.anonymous = true;
 
-		o = s.option(form.ListValue, 'mode', _('出口模式'));
-		o.value('wan_first', _('有线 WAN 优先，5G 备用'));
-		o.value('modem_first', _('5G 模块优先，有线 WAN 备用'));
-		o.value('wan_only', _('仅有线 WAN'));
-		o.value('modem_only', _('仅 5G 模块'));
+		o = s.option(form.ListValue, 'mode', _('Exit Mode'));
+		o.value('wan_first', _('Wired WAN first, 5G fallback'));
+		o.value('modem_first', _('5G modem first, wired WAN fallback'));
+		o.value('wan_only', _('Wired WAN only'));
+		o.value('modem_only', _('5G modem only'));
 		o.default = 'wan_first';
 		o.rmempty = false;
 
 		m.handleSaveApply = function(ev, mode) {
 			return form.Map.prototype.handleSaveApply.apply(this, [ ev, mode ]).then(function() {
 				return fs.exec('/usr/sbin/h5000m-netmode', [ 'apply' ]).then(function() {
-					ui.addNotification(null, E('p', _('出口优先级已应用。')));
+					ui.addNotification(null, E('p', _('Exit priority has been applied.')));
 				}, function(err) {
-					ui.addNotification(null, E('p', _('出口优先级应用失败：') + err.message), 'danger');
+					ui.addNotification(null, E('p', _('Failed to apply exit priority:') + ' ' + err.message), 'danger');
 				});
 			});
 		};

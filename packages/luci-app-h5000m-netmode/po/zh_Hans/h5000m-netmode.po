@@ -1,0 +1,65 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Exit Priority"
+msgstr "出口优先级"
+
+msgid "Switch the default route priority between wired WAN and the 5G modem."
+msgstr "切换有线 WAN 与 5G 模块的默认出口优先级。"
+
+msgid "Exit Mode"
+msgstr "出口模式"
+
+msgid "Wired WAN first, 5G fallback"
+msgstr "有线 WAN 优先，5G 备用"
+
+msgid "5G modem first, wired WAN fallback"
+msgstr "5G 模块优先，有线 WAN 备用"
+
+msgid "Wired WAN only"
+msgstr "仅有线 WAN"
+
+msgid "5G modem only"
+msgstr "仅 5G 模块"
+
+msgid "Current Status"
+msgstr "当前状态"
+
+msgid "Current Mode"
+msgstr "当前模式"
+
+msgid "IPv4 Default Route"
+msgstr "IPv4 默认出口"
+
+msgid "IPv6 Default Route"
+msgstr "IPv6 默认出口"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "None"
+msgstr "无"
+
+msgid "Wired WAN Metric"
+msgstr "有线 WAN metric"
+
+msgid "5G Modem Metric"
+msgstr "5G 模块 metric"
+
+msgid "Wired WAN Default Route"
+msgstr "有线 WAN 默认路由"
+
+msgid "5G Modem Default Route"
+msgstr "5G 模块默认路由"
+
+msgid "Disabled"
+msgstr "关闭"
+
+msgid "Enabled"
+msgstr "开启"
+
+msgid "Exit priority has been applied."
+msgstr "出口优先级已应用。"
+
+msgid "Failed to apply exit priority:"
+msgstr "出口优先级应用失败："

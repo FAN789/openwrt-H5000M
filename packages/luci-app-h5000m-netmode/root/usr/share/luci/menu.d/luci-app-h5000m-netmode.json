@@ -1,6 +1,6 @@
 {
 	"admin/network/h5000m_netmode": {
-		"title": "出口优先级",
+		"title": "Exit Priority",
 		"order": 90,
 		"action": {
 			"type": "view",

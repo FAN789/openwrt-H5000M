@@ -44,7 +44,7 @@ return view.extend({
 	},
 
 	formatTemp: function(value) {
-		return value ? _('%s °C').format(value) : _('未知');
+		return value ? _('%s C').format(value) : _('Unknown');
 	},
 
 	formatRpm: function(data) {
@@ -52,9 +52,9 @@ return view.extend({
 			return _('%s RPM').format(data.fan_rpm);
 
 		if (data.fan_feedback === '0')
-			return _('无转速反馈');
+			return _('No RPM feedback');
 
-		return _('未知');
+		return _('Unknown');
 	},
 
 	statusCard: function(title, value, hint) {
@@ -76,11 +76,11 @@ return view.extend({
 			'.h5000m-fan-note{margin-top:10px;color:var(--text-color-medium,#666)}',
 			'.h5000m-fan-curve-box{border:1px solid var(--border-color-medium,#d8d8d8);border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.018));padding:14px;overflow:hidden}',
 			'.h5000m-fan-curve-layout{display:grid;grid-template-columns:minmax(320px,1fr) 210px;gap:16px;align-items:stretch}',
-			'.h5000m-fan-curve-canvas{width:100%;height:280px;display:block;border-radius:6px}',
+			'.h5000m-fan-curve-canvas{width:100%;height:280px;display:block;border-radius:6px;background:#17191c}',
 			'.h5000m-fan-curve-side{display:grid;grid-template-columns:1fr;gap:10px}',
 			'.h5000m-fan-curve-chip{border:1px solid var(--border-color-low,#30363d);border-radius:8px;padding:10px;background:rgba(255,255,255,.035)}',
 			'.h5000m-fan-curve-chip-title{font-size:12px;color:var(--text-color-medium,#777);margin-bottom:4px}',
-			'.h5000m-fan-curve-chip-value{font-size:20px;font-weight:600;color:#dce2e8}',
+			'.h5000m-fan-curve-chip-value{font-size:20px;font-weight:600;color:var(--text-color-high,#dce2e8)}',
 			'.h5000m-fan-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;color:var(--text-color-medium,#666);font-size:12px}',
 			'.h5000m-fan-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}',
 			'@media (max-width: 900px){.h5000m-fan-curve-layout{grid-template-columns:1fr}.h5000m-fan-curve-side{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}}',
@@ -91,31 +91,23 @@ return view.extend({
 	},
 
 	statusPanel: function(data) {
-		var pwmHint = data.pwm ? data.pwm.replace('/sys/class/hwmon/', '') : _('未找到 PWM 节点');
-		var fanHint = data.fan_feedback === '0' ? _('当前驱动未暴露 fan_input') : (data.fan || '');
+		var pwmHint = data.pwm ? data.pwm.replace('/sys/class/hwmon/', '') : _('PWM node not found');
+		var fanHint = data.fan_feedback === '0' ? _('Current driver does not expose fan_input') : (data.fan || '');
 
 		return E('div', { 'class': 'h5000m-fan-status' }, [
-			E('h3', _('当前状态')),
+			E('h3', _('Current Status')),
 			E('div', { 'class': 'h5000m-fan-grid' }, [
-				this.statusCard(_('风扇转速'), this.formatRpm(data), fanHint),
-				this.statusCard(_('当前 PWM'), data.pwm_value || _('未知'), pwmHint),
-				this.statusCard(_('模块温度'), this.formatTemp(data.module_temp), _('来自 QModem 缓存')),
-				this.statusCard(_('CPU 温度'), this.formatTemp(data.cpu_temp), data.temp1_label || ''),
-				this.statusCard(_('WiFi 温度 1'), this.formatTemp(data.wifi1_temp), data.temp2_label || ''),
-				this.statusCard(_('WiFi 温度 2'), this.formatTemp(data.wifi2_temp), data.temp3_label || '')
+				this.statusCard(_('Fan Speed'), this.formatRpm(data), fanHint),
+				this.statusCard(_('Current PWM'), data.pwm_value || _('Unknown'), pwmHint),
+				this.statusCard(_('Modem Temperature'), this.formatTemp(data.module_temp), _('From QModem cache')),
+				this.statusCard(_('CPU Temperature'), this.formatTemp(data.cpu_temp), data.temp1_label || ''),
+				this.statusCard(_('WiFi Temperature 1'), this.formatTemp(data.wifi1_temp), data.temp2_label || ''),
+				this.statusCard(_('WiFi Temperature 2'), this.formatTemp(data.wifi2_temp), data.temp3_label || '')
 			]),
 			data.fan_feedback === '0'
-				? E('div', { 'class': 'h5000m-fan-note' }, _('当前系统只提供 PWM 控制，没有提供风扇转速反馈节点。'))
+				? E('div', { 'class': 'h5000m-fan-note' }, _('The current system only provides PWM control and does not expose a fan speed feedback node.'))
 				: null
 		]);
-	},
-
-	curveY: function(pwm, top, height) {
-		return top + (255 - this.clamp(pwm, 0, 255)) * height / 255;
-	},
-
-	curveX: function(temp, minTemp, maxTemp, left, width) {
-		return left + (this.clamp(temp, minTemp, maxTemp) - minTemp) * width / (maxTemp - minTemp);
 	},
 
 	pwmAtTemp: function(temp, low, high, minPwm, maxPwm) {
@@ -260,20 +252,11 @@ return view.extend({
 		ctx.fillText('0', 28, top + plotH);
 		ctx.fillText('PWM', left + plotW - 30, top + 12);
 		ctx.textBaseline = 'top';
-		ctx.fillText(_('%s 掳C').format(tempMin), left, top + plotH + 12);
-		ctx.fillText(_('%s 掳C').format(config.low), lowX - 18, top + plotH + 12);
-		ctx.fillText(_('%s 掳C').format(config.high), highX - 18, top + plotH + 12);
-		ctx.fillText(_('%s 掳C').format(tempMax), left + plotW - 42, top + plotH + 12);
-		ctx.fillText(_('娓╁害'), left + plotW - 28, top + plotH + 28);
-		ctx.fillStyle = '#17191c';
-		ctx.fillRect(left - 4, top + plotH + 4, plotW + 8, 42);
-		ctx.fillStyle = 'rgba(255,255,255,.62)';
-		ctx.textBaseline = 'top';
 		ctx.fillText(tempMin + ' C', left, top + plotH + 12);
 		ctx.fillText(config.low + ' C', lowX - 18, top + plotH + 12);
 		ctx.fillText(config.high + ' C', highX - 18, top + plotH + 12);
 		ctx.fillText(tempMax + ' C', left + plotW - 42, top + plotH + 12);
-		ctx.fillText('Temp', left + plotW - 30, top + plotH + 28);
+		ctx.fillText(_('Temperature'), left + plotW - 78, top + plotH + 28);
 	},
 
 	curvePanel: function(data) {
@@ -285,9 +268,7 @@ return view.extend({
 		var manualPwm = this.toNum(data.manual_pwm, 160);
 		var currentTemp = this.normalizeTemp(data.cpu_temp || data.temp_value, NaN);
 		var currentPwm = this.toNum(data.pwm_value, NaN);
-		var left = 48, top = 18, width = 360, height = 150;
-		var tempMin, tempMax, points, marker, manualLine, modeText;
-		var children = [];
+		var modeText, canvasId, self, canvasConfig, legendItems;
 
 		low = this.clamp(low, 0, 120);
 		high = this.clamp(high, 1, 120);
@@ -298,75 +279,16 @@ return view.extend({
 		if (high <= low)
 			high = low + 1;
 
-		tempMin = Math.max(0, low - 15);
-		tempMax = Math.min(120, high + 15);
+		if (mode === 'manual')
+			modeText = _('Manual mode: the slider value is used as a fixed PWM output.');
+		else if (mode === 'off')
+			modeText = _('Off mode: fan PWM output is set to 0.');
+		else
+			modeText = _('Auto mode: low temperatures use the minimum PWM, high temperatures use the maximum PWM, and values in between increase linearly.');
 
-		if (tempMax <= tempMin)
-			tempMax = tempMin + 1;
-
-		points = [
-			[this.curveX(tempMin, tempMin, tempMax, left, width), this.curveY(minPwm, top, height)],
-			[this.curveX(low, tempMin, tempMax, left, width), this.curveY(minPwm, top, height)],
-			[this.curveX(high, tempMin, tempMax, left, width), this.curveY(maxPwm, top, height)],
-			[this.curveX(tempMax, tempMin, tempMax, left, width), this.curveY(maxPwm, top, height)]
-		].map(function(p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
-
-		if (!isNaN(currentTemp)) {
-			if (isNaN(currentPwm))
-				currentPwm = mode === 'manual' ? manualPwm : this.pwmAtTemp(currentTemp, low, high, minPwm, maxPwm);
-
-			marker = E('circle', {
-				cx: this.curveX(currentTemp, tempMin, tempMax, left, width),
-				cy: this.curveY(currentPwm, top, height),
-				r: 5,
-				fill: '#d14545'
-			});
-		}
-
-		if (mode === 'manual') {
-			manualLine = E('line', {
-				id: 'h5000m-fan-manual-line',
-				x1: left,
-				y1: this.curveY(manualPwm, top, height),
-				x2: left + width,
-				y2: this.curveY(manualPwm, top, height),
-				stroke: '#3b7ddd',
-				'stroke-width': 2,
-				'stroke-dasharray': '6 4'
-			});
-			modeText = _('手动模式：滑杆数值作为固定 PWM 输出。');
-		} else if (mode === 'off') {
-			modeText = _('关闭模式：风扇 PWM 输出为 0。');
-		} else {
-			modeText = _('自动模式：低温使用最低 PWM，高温使用最高 PWM，中间线性递增。');
-		}
-
-		children.push(E('rect', { x: left, y: top, width: width, height: height, fill: '#fafafa', stroke: '#e5e5e5' }));
-		children.push(E('line', { x1: left, y1: top + height, x2: left + width, y2: top + height, stroke: '#888' }));
-		children.push(E('line', { x1: left, y1: top, x2: left, y2: top + height, stroke: '#888' }));
-		children.push(E('text', { x: 10, y: top + 6, 'font-size': 11, fill: '#666' }, '255'));
-		children.push(E('text', { x: 22, y: top + height, 'font-size': 11, fill: '#666' }, '0'));
-		children.push(E('text', { x: left, y: top + height + 20, 'font-size': 11, fill: '#666' }, _('%s °C').format(tempMin)));
-		children.push(E('text', { x: left + width - 42, y: top + height + 20, 'font-size': 11, fill: '#666' }, _('%s °C').format(tempMax)));
-		children.push(E('text', { x: left + width - 54, y: top + 12, 'font-size': 11, fill: '#666' }, 'PWM'));
-		children.push(E('text', { x: left + width - 38, y: top + height + 36, 'font-size': 11, fill: '#666' }, _('温度')));
-		children.push(E('line', { x1: this.curveX(low, tempMin, tempMax, left, width), y1: top, x2: this.curveX(low, tempMin, tempMax, left, width), y2: top + height, stroke: '#d6d6d6', 'stroke-dasharray': '4 4' }));
-		children.push(E('line', { x1: this.curveX(high, tempMin, tempMax, left, width), y1: top, x2: this.curveX(high, tempMin, tempMax, left, width), y2: top + height, stroke: '#d6d6d6', 'stroke-dasharray': '4 4' }));
-		children.push(E('text', { x: this.curveX(low, tempMin, tempMax, left, width) - 14, y: top + height + 20, 'font-size': 11, fill: '#666' }, _('%s °C').format(low)));
-		children.push(E('text', { x: this.curveX(high, tempMin, tempMax, left, width) - 14, y: top + height + 20, 'font-size': 11, fill: '#666' }, _('%s °C').format(high)));
-		children.push(E('polyline', { points: points, fill: 'none', stroke: '#2d8a5f', 'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-
-		if (manualLine)
-			children.push(manualLine);
-		if (marker)
-			children.push(marker);
-
-		var canvasId = 'h5000m-fan-curve-canvas';
-		var self = this;
-		var legendItems = [
-			E('span', [ E('span', { 'class': 'h5000m-fan-swatch', style: 'background:#45b77d' }), _('自动曲线') ])
-		];
-		var canvasConfig = {
+		canvasId = 'h5000m-fan-curve-canvas';
+		self = this;
+		canvasConfig = {
 			mode: mode,
 			low: low,
 			high: high,
@@ -390,28 +312,32 @@ return view.extend({
 			window.h5000mFanCurveDraw();
 		}, 0);
 
+		legendItems = [
+			E('span', [ E('span', { 'class': 'h5000m-fan-swatch', style: 'background:#45b77d' }), _('Auto Curve') ])
+		];
+
 		if (mode === 'manual')
-			legendItems.push(E('span', [ E('span', { 'class': 'h5000m-fan-swatch', style: 'background:#79b8ff' }), _('手动 PWM') ]));
+			legendItems.push(E('span', [ E('span', { 'class': 'h5000m-fan-swatch', style: 'background:#79b8ff' }), _('Manual PWM') ]));
 
 		if (!isNaN(currentTemp))
-			legendItems.push(E('span', [ E('span', { 'class': 'h5000m-fan-swatch', style: 'background:#ff5d5d' }), _('当前状态') ]));
+			legendItems.push(E('span', [ E('span', { 'class': 'h5000m-fan-swatch', style: 'background:#ff5d5d' }), _('Current Status') ]));
 
 		return E('div', { 'class': 'h5000m-fan-curve' }, [
-			E('h3', _('风扇曲线')),
+			E('h3', _('Fan Curve')),
 			E('div', { 'class': 'h5000m-fan-curve-box' }, [
 				E('div', { 'class': 'h5000m-fan-curve-layout' }, [
 					E('canvas', { id: canvasId, 'class': 'h5000m-fan-curve-canvas', width: '720', height: '280' }),
 					E('div', { 'class': 'h5000m-fan-curve-side' }, [
 						E('div', { 'class': 'h5000m-fan-curve-chip' }, [
-							E('div', { 'class': 'h5000m-fan-curve-chip-title' }, _('温度区间')),
+							E('div', { 'class': 'h5000m-fan-curve-chip-title' }, _('Temperature Range')),
 							E('div', { 'class': 'h5000m-fan-curve-chip-value' }, low + ' - ' + high + ' C')
 						]),
 						E('div', { 'class': 'h5000m-fan-curve-chip' }, [
-							E('div', { 'class': 'h5000m-fan-curve-chip-title' }, _('PWM 区间')),
+							E('div', { 'class': 'h5000m-fan-curve-chip-title' }, _('PWM Range')),
 							E('div', { 'class': 'h5000m-fan-curve-chip-value' }, minPwm + ' - ' + maxPwm)
 						]),
 						E('div', { 'class': 'h5000m-fan-curve-chip' }, [
-							E('div', { 'class': 'h5000m-fan-curve-chip-title' }, _('当前 PWM')),
+							E('div', { 'class': 'h5000m-fan-curve-chip-title' }, _('Current PWM')),
 							E('div', { 'class': 'h5000m-fan-curve-chip-value' }, isNaN(currentPwm) ? '-' : currentPwm)
 						])
 					])
@@ -486,45 +412,45 @@ return view.extend({
 		var m, s, o;
 		var status = this.parseStatus(res);
 
-		m = new form.Map('h5000m_fancontrol', _('风扇控制'));
-		m.description = _('调节 PWM 风扇策略。');
+		m = new form.Map('h5000m_fancontrol', _('Fan Control'));
+		m.description = _('Adjust the PWM fan policy.');
 
 		s = m.section(form.NamedSection, 'settings', 'settings');
 		s.anonymous = true;
 
-		o = s.option(form.Flag, 'enabled', _('启用'));
+		o = s.option(form.Flag, 'enabled', _('Enable'));
 		o.default = '1';
 		o.rmempty = false;
 
-		o = s.option(form.ListValue, 'mode', _('模式'));
-		o.value('auto', _('自动'));
-		o.value('manual', _('手动'));
-		o.value('off', _('关闭'));
+		o = s.option(form.ListValue, 'mode', _('Mode'));
+		o.value('auto', _('Auto'));
+		o.value('manual', _('Manual'));
+		o.value('off', _('Off'));
 		o.default = 'auto';
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'manual_pwm', _('手动 PWM'));
+		o = s.option(form.Value, 'manual_pwm', _('Manual PWM'));
 		o.datatype = 'range(0,255)';
 		o.default = '160';
 		this.renderManualPwmWidget(o);
 
-		o = s.option(form.Value, 'min_pwm', _('最低 PWM'));
+		o = s.option(form.Value, 'min_pwm', _('Minimum PWM'));
 		o.datatype = 'range(0,255)';
 		o.default = '80';
 
-		o = s.option(form.Value, 'max_pwm', _('最高 PWM'));
+		o = s.option(form.Value, 'max_pwm', _('Maximum PWM'));
 		o.datatype = 'range(0,255)';
 		o.default = '255';
 
-		o = s.option(form.Value, 'low_temp', _('低温阈值'));
+		o = s.option(form.Value, 'low_temp', _('Low Temperature Threshold'));
 		o.datatype = 'range(0,120)';
 		o.default = '45';
 
-		o = s.option(form.Value, 'high_temp', _('高温阈值'));
+		o = s.option(form.Value, 'high_temp', _('High Temperature Threshold'));
 		o.datatype = 'range(1,120)';
 		o.default = '70';
 
-		o = s.option(form.Value, 'interval', _('刷新间隔'));
+		o = s.option(form.Value, 'interval', _('Refresh Interval'));
 		o.datatype = 'range(5,300)';
 		o.default = '15';
 
@@ -533,9 +459,9 @@ return view.extend({
 				return fs.exec('/usr/sbin/h5000m-fancontrol', [ 'apply' ]).then(function() {
 					return fs.exec('/etc/init.d/h5000m-fancontrol', [ 'restart' ]);
 				}).then(function() {
-					ui.addNotification(null, E('p', _('风扇控制已应用。')));
+					ui.addNotification(null, E('p', _('Fan control has been applied.')));
 				}, function(err) {
-					ui.addNotification(null, E('p', _('风扇控制应用失败：') + err.message), 'danger');
+					ui.addNotification(null, E('p', _('Failed to apply fan control:') + ' ' + err.message), 'danger');
 				});
 			});
 		};

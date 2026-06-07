@@ -1,0 +1,110 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Fan Control"
+msgstr "风扇控制"
+
+msgid "Adjust the PWM fan policy."
+msgstr "调节 PWM 风扇策略。"
+
+msgid "Current Status"
+msgstr "当前状态"
+
+msgid "Fan Speed"
+msgstr "风扇转速"
+
+msgid "Current PWM"
+msgstr "当前 PWM"
+
+msgid "Modem Temperature"
+msgstr "模块温度"
+
+msgid "CPU Temperature"
+msgstr "CPU 温度"
+
+msgid "WiFi Temperature 1"
+msgstr "WiFi 温度 1"
+
+msgid "WiFi Temperature 2"
+msgstr "WiFi 温度 2"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "No RPM feedback"
+msgstr "无转速反馈"
+
+msgid "PWM node not found"
+msgstr "未找到 PWM 节点"
+
+msgid "Current driver does not expose fan_input"
+msgstr "当前驱动未暴露 fan_input"
+
+msgid "From QModem cache"
+msgstr "来自 QModem 缓存"
+
+msgid "The current system only provides PWM control and does not expose a fan speed feedback node."
+msgstr "当前系统只提供 PWM 控制，没有提供风扇转速反馈节点。"
+
+msgid "Fan Curve"
+msgstr "风扇曲线"
+
+msgid "Auto Curve"
+msgstr "自动曲线"
+
+msgid "Manual PWM"
+msgstr "手动 PWM"
+
+msgid "Temperature"
+msgstr "温度"
+
+msgid "Temperature Range"
+msgstr "温度区间"
+
+msgid "PWM Range"
+msgstr "PWM 区间"
+
+msgid "Manual mode: the slider value is used as a fixed PWM output."
+msgstr "手动模式：滑杆数值作为固定 PWM 输出。"
+
+msgid "Off mode: fan PWM output is set to 0."
+msgstr "关闭模式：风扇 PWM 输出为 0。"
+
+msgid "Auto mode: low temperatures use the minimum PWM, high temperatures use the maximum PWM, and values in between increase linearly."
+msgstr "自动模式：低温使用最低 PWM，高温使用最高 PWM，中间线性递增。"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Mode"
+msgstr "模式"
+
+msgid "Auto"
+msgstr "自动"
+
+msgid "Manual"
+msgstr "手动"
+
+msgid "Off"
+msgstr "关闭"
+
+msgid "Minimum PWM"
+msgstr "最低 PWM"
+
+msgid "Maximum PWM"
+msgstr "最高 PWM"
+
+msgid "Low Temperature Threshold"
+msgstr "低温阈值"
+
+msgid "High Temperature Threshold"
+msgstr "高温阈值"
+
+msgid "Refresh Interval"
+msgstr "刷新间隔"
+
+msgid "Fan control has been applied."
+msgstr "风扇控制已应用。"
+
+msgid "Failed to apply fan control:"
+msgstr "风扇控制应用失败："

@@ -37,6 +37,8 @@ CONFIG_PACKAGE_rpcd-mod-rrdns=y
 CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-h5000m-fancontrol-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-h5000m-netmode-zh-cn=y
 EOF
 
 if [ "${INCLUDE_QMODEM}" = "true" ]; then

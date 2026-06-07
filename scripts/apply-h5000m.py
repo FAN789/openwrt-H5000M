@@ -96,16 +96,12 @@ DTS = r'''// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 &gmac0 {
 	phy-mode = "2500base-x";
 	phy-handle = <&phy0>;
-	nvmem-cells = <&macaddr_factory_24 0>;
-	nvmem-cell-names = "mac-address";
 	status = "okay";
 };
 
 &gmac1 {
 	phy-mode = "internal";
 	phy-handle = <&phy1>;
-	nvmem-cells = <&macaddr_factory_2a 0>;
-	nvmem-cell-names = "mac-address";
 	status = "okay";
 };
 
@@ -157,19 +153,7 @@ DTS = r'''// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 						#size-cells = <1>;
 
 						eeprom_factory_0: eeprom@0 {
-							reg = <0x0 0x1000>;
-						};
-
-						macaddr_factory_24: macaddr@24 {
-							compatible = "mac-base";
-							reg = <0x24 0x6>;
-							#nvmem-cell-cells = <1>;
-						};
-
-						macaddr_factory_2a: macaddr@2a {
-							compatible = "mac-base";
-							reg = <0x2a 0x6>;
-							#nvmem-cell-cells = <1>;
+							reg = <0x0 0x1e00>;
 						};
 					};
 				};
@@ -266,14 +250,14 @@ def write(path: Path, text: str) -> None:
 
 def require(path: Path) -> None:
     if not path.exists():
-        raise SystemExit(f"缺少必要文件：{path}")
+        raise SystemExit(f"Missing required file: {path}")
 
 
 def insert_once(text: str, marker: str, insert: str, label: str) -> str:
     if insert.strip() in text:
         return text
     if marker not in text:
-        raise SystemExit(f"找不到 {label} 的插入位置：{marker!r}")
+        raise SystemExit(f"Cannot find insertion point for {label}: {marker!r}")
     return text.replace(marker, insert + marker, 1)
 
 
@@ -290,23 +274,14 @@ def insert_after_all(text: str, anchor: str, insert: str) -> str:
     return "".join(rebuilt)
 
 
-def insert_before_case_end(text: str, insert: str, label: str) -> str:
-    if insert.strip() in text:
-        return text
-    marker = "esac\n"
-    if marker not in text:
-        raise SystemExit(f"找不到 {label} 的 case 结束位置：{marker!r}")
-    return text.replace(marker, insert + marker, 1)
-
-
 def main() -> int:
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
 
     mt7987a = root / "target/linux/mediatek/dts/mt7987a.dtsi"
     if not mt7987a.exists():
         raise SystemExit(
-            "当前 OpenWrt 版本缺少 target/linux/mediatek/dts/mt7987a.dtsi。\n"
-            "H5000M 需要 MT7987 基础平台支持。请使用 v25.12.4/master，或先回移植 MT7987 支持。"
+            "The selected OpenWrt source lacks target/linux/mediatek/dts/mt7987a.dtsi.\n"
+            "H5000M needs MT7987 platform support. Use v25.12.4/master or backport MT7987 first."
         )
 
     dts_path = root / "target/linux/mediatek/dts/mt7987a-hiveton-h5000m.dts"
@@ -334,6 +309,7 @@ def main() -> int:
             text = text.replace(mt7987_case, h5000m_case + mt7987_case, 1)
         else:
             text = insert_once(text, "\topenembed,som7981|\\\n", h5000m_case, "network interface")
+
     mac_case = '''\thiveton,h5000m)
 \t\tlan_mac=$(tr '\\0' '\\n' < /dev/mmcblk0p1 | sed -n 's/^ethaddr=//p' | head -n 1)
 \t\twan_mac=$(tr '\\0' '\\n' < /dev/mmcblk0p1 | sed -n 's/^eth1addr=//p' | head -n 1)
@@ -373,10 +349,10 @@ def main() -> int:
                 text = text.replace(marker, DEVICE_BLOCK + marker, 1)
                 break
         else:
-            raise SystemExit("无法在 filogic.mk 中找到添加 Device/hiveton_h5000m 的位置")
+            raise SystemExit("Cannot find a place to add Device/hiveton_h5000m in filogic.mk")
     write(filogic, text)
 
-    print("H5000M 设备适配已应用。")
+    print("H5000M device support applied.")
     return 0
 
 
