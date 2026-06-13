@@ -1,0 +1,162 @@
+#!/bin/sh
+
+CONFIG='mt5700m.settings'
+
+enabled="$(uci -q get ${CONFIG}.enabled || echo 1)"
+host="$(uci -q get ${CONFIG}.host || echo 192.168.8.1)"
+port="$(uci -q get ${CONFIG}.port || echo 20249)"
+timeout_s="$(uci -q get ${CONFIG}.timeout || echo 8)"
+
+case "${timeout_s}" in
+	''|*[!0-9]*)
+		timeout_s=8
+		;;
+esac
+
+at_cmd() {
+	local command="$1"
+
+	[ "${enabled}" = "1" ] || return 2
+	command="$(printf '%s' "${command}" | tr -d '\000\r\n')"
+	[ -n "${command}" ] || return 1
+
+	if command -v nc >/dev/null 2>&1; then
+		printf '%s\r' "${command}" | nc -w "${timeout_s}" "${host}" "${port}" 2>/dev/null
+		return $?
+	fi
+
+	echo "nc command not found" >&2
+	return 127
+}
+
+first_match() {
+	sed -n "$1" | head -n 1 | tr -d '\r'
+}
+
+clean_value() {
+	sed "s/^[[:space:]]*//;s/[[:space:]]*$//;s/^\"//;s/\"$//"
+}
+
+print_signal() {
+	local raw line fields sys rsrp sinr rsrq
+
+	raw="$(at_cmd 'AT^HCSQ?' || true)"
+	line="$(printf '%s\n' "${raw}" | first_match 's/^\^HCSQ:[[:space:]]*//p')"
+	line="$(printf '%s' "${line}" | tr -d '"' | tr -d ' ')"
+	[ -n "${line}" ] || return 0
+
+	IFS=,
+	set -- ${line}
+	IFS=' '
+	sys="$1"
+	rsrp="$2"
+	sinr="$3"
+	rsrq="$4"
+
+	echo "sysmode=${sys:-}"
+	if printf '%s' "${rsrp:-}" | grep -Eq '^[0-9]+$'; then
+		[ "${rsrp}" = "255" ] && echo "rsrp=" || echo "rsrp=$((rsrp - 140))"
+	fi
+	if printf '%s' "${sinr:-}" | grep -Eq '^[0-9]+$'; then
+		case "${sinr}" in
+			255)
+				echo "sinr="
+				;;
+			251)
+				echo "sinr=>=30.0"
+				;;
+			*)
+				awk -v v="${sinr}" 'BEGIN { printf "sinr=%.1f\n", -20 + v * 0.2 }'
+				;;
+		esac
+	fi
+	if printf '%s' "${rsrq:-}" | grep -Eq '^[0-9]+$'; then
+		case "${rsrq}" in
+			255)
+				echo "rsrq="
+				;;
+			34)
+				echo "rsrq=>=-3"
+				;;
+			*)
+				awk -v v="${rsrq}" 'BEGIN { printf "rsrq=%.1f\n", -19.5 + v * 0.5 }'
+				;;
+		esac
+	fi
+}
+
+print_identity() {
+	local raw
+
+	raw="$(at_cmd 'ATI' || true)"
+	printf '%s\n' "${raw}" | first_match 's/^Manufacturer:[[:space:]]*//p' | clean_value | sed 's/^/manufacturer=/'
+	printf '%s\n' "${raw}" | first_match 's/^Model:[[:space:]]*//p' | clean_value | sed 's/^/model=/'
+	printf '%s\n' "${raw}" | first_match 's/^Revision:[[:space:]]*//p' | clean_value | sed 's/^/revision=/'
+	printf '%s\n' "${raw}" | first_match 's/^IMEI:[[:space:]]*//p' | clean_value | sed 's/^/imei=/'
+}
+
+print_sim_operator() {
+	local sim cops
+
+	sim="$(at_cmd 'AT+CPIN?' || true)"
+	printf '%s\n' "${sim}" | first_match 's/^+CPIN:[[:space:]]*//p' | clean_value | sed 's/^/sim=/'
+
+	cops="$(at_cmd 'AT+COPS?' || true)"
+	printf '%s\n' "${cops}" | first_match 's/^+COPS:[[:space:]]*//p' | clean_value | sed 's/^/operator=/'
+}
+
+print_temperature() {
+	local raw value
+
+	raw="$(at_cmd 'AT^CHIPTEMP?' || true)"
+	value="$(printf '%s\n' "${raw}" | first_match 's/^\^CHIPTEMP:[[:space:]]*//p' | awk -F, '{print $1}' | grep -Eo -- '-?[0-9]+' | head -n 1)"
+	[ -n "${value}" ] || return 0
+	awk -v v="${value}" 'BEGIN { printf "temperature=%.1f\n", v / 10 }'
+}
+
+print_lock_status() {
+	local raw
+
+	raw="$(at_cmd 'AT^NRFREQLOCK?' || true)"
+	printf '%s\n' "${raw}" | first_match 's/^\^NRFREQLOCK:[[:space:]]*//p' | clean_value | sed 's/^/nr_lock=/'
+
+	raw="$(at_cmd 'AT^LTEFREQLOCK?' || true)"
+	printf '%s\n' "${raw}" | first_match 's/^\^LTEFREQLOCK:[[:space:]]*//p' | clean_value | sed 's/^/lte_lock=/'
+}
+
+case "${1:-status}" in
+	status)
+		echo "enabled=${enabled}"
+		echo "host=${host}"
+		echo "port=${port}"
+		if at_cmd 'AT' | grep -q 'OK'; then
+			echo "connected=1"
+		else
+			echo "connected=0"
+		fi
+		print_identity
+		print_sim_operator
+		print_signal
+		print_temperature
+		print_lock_status
+		;;
+	command)
+		shift
+		at_cmd "$*"
+		;;
+	restart)
+		at_cmd 'AT+CFUN=1,1'
+		;;
+	unlock)
+		echo "Unlock LTE:"
+		at_cmd 'AT^LTEFREQLOCK=0'
+		echo "Unlock NR:"
+		at_cmd 'AT^NRFREQLOCK=0'
+		;;
+	*)
+		echo "Usage: $0 {status|command <AT>|restart|unlock}" >&2
+		exit 1
+		;;
+esac
+
+exit 0

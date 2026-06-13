@@ -1,0 +1,128 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "MT5700M Management"
+msgstr "MT5700M 管理"
+
+msgid "Native LuCI management page for the MT5700M module network AT interface."
+msgstr "用于 MT5700M 模块网络 AT 接口的 LuCI 原生管理页面。"
+
+msgid "Connection"
+msgstr "连接"
+
+msgid "Connected"
+msgstr "已连接"
+
+msgid "Disconnected"
+msgstr "未连接"
+
+msgid "Module"
+msgstr "模块"
+
+msgid "SIM Status"
+msgstr "SIM 状态"
+
+msgid "Operator"
+msgstr "运营商"
+
+msgid "Network Mode"
+msgstr "网络制式"
+
+msgid "Module Temperature"
+msgstr "模块温度"
+
+msgid "NR Lock"
+msgstr "NR 锁定"
+
+msgid "LTE Lock"
+msgstr "LTE 锁定"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "%s C"
+msgstr "%s 摄氏度"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Unlock LTE/NR"
+msgstr "解锁 LTE/NR"
+
+msgid "Restart Module"
+msgstr "重启模块"
+
+msgid "This will unlock LTE and NR frequency locks. QModem may redial after the modem changes state."
+msgstr "这会解除 LTE 和 NR 频率锁定。模块状态变化后，QModem 可能会重新拨号。"
+
+msgid "This will restart the MT5700M module and temporarily interrupt 5G connectivity."
+msgstr "这会重启 MT5700M 模块，并临时中断 5G 连接。"
+
+msgid "Confirm Action"
+msgstr "确认操作"
+
+msgid "Continue"
+msgstr "继续"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Command completed."
+msgstr "命令已完成。"
+
+msgid "MT5700M AT Terminal"
+msgstr "MT5700M AT 终端"
+
+msgid "Send AT commands directly to the configured MT5700M network AT interface."
+msgstr "直接向已配置的 MT5700M 网络 AT 接口发送 AT 命令。"
+
+msgid "Enter AT command, for example AT^HCSQ?"
+msgstr "输入 AT 命令，例如 AT^HCSQ?"
+
+msgid "Send"
+msgstr "发送"
+
+msgid "Clear"
+msgstr "清空"
+
+msgid "Ready."
+msgstr "就绪。"
+
+msgid "Command is empty."
+msgstr "命令为空。"
+
+msgid "No response."
+msgstr "无响应。"
+
+msgid "Signal"
+msgstr "信号"
+
+msgid "Temperature"
+msgstr "温度"
+
+msgid "Cell Info"
+msgstr "小区信息"
+
+msgid "Configure the MT5700M module network AT endpoint used by the native LuCI pages."
+msgstr "配置 LuCI 原生页面使用的 MT5700M 模块网络 AT 接口。"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "AT Host"
+msgstr "AT 主机"
+
+msgid "AT Port"
+msgstr "AT 端口"
+
+msgid "Timeout"
+msgstr "超时时间"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "AT Terminal"
+msgstr "AT 终端"
+
+msgid "Settings"
+msgstr "设置"

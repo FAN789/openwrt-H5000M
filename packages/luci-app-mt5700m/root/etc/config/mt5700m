@@ -1,0 +1,5 @@
+config mt5700m 'settings'
+	option enabled '1'
+	option host '192.168.8.1'
+	option port '20249'
+	option timeout '8'

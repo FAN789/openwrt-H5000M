@@ -11,6 +11,7 @@ INCLUDE_MOSDNS="${INCLUDE_MOSDNS:-false}"
 INCLUDE_UPNP="${INCLUDE_UPNP:-false}"
 INCLUDE_HOMEPROXY="${INCLUDE_HOMEPROXY:-false}"
 INCLUDE_VNSTAT="${INCLUDE_VNSTAT:-false}"
+INCLUDE_MT5700M="${INCLUDE_MT5700M:-false}"
 
 missing=0
 
@@ -63,6 +64,11 @@ optional_config "CONFIG_PACKAGE_luci-i18n-firewall-zh-cn"
 optional_config "CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn"
 require_config "CONFIG_PACKAGE_luci-app-h5000m-fancontrol"
 require_config "CONFIG_PACKAGE_luci-app-h5000m-netmode"
+
+if [ "${INCLUDE_MT5700M}" = "true" ]; then
+  require_config "CONFIG_PACKAGE_luci-app-mt5700m"
+  optional_config "CONFIG_PACKAGE_luci-i18n-mt5700m-zh-cn"
+fi
 
 if [ "${INCLUDE_QMODEM}" = "true" ]; then
   require_config "CONFIG_PACKAGE_qmodem"

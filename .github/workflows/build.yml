@@ -41,6 +41,11 @@ on:
         required: true
         type: boolean
         default: true
+      mt5700m:
+        description: "7. MT5700M：原生管理页面"
+        required: true
+        type: boolean
+        default: true
       create_release:
         description: 发布 Releases
         required: true
@@ -86,6 +91,7 @@ jobs:
           INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
           INCLUDE_VNSTAT: ${{ inputs.vnstat && 'true' || 'false' }}
+          INCLUDE_MT5700M: ${{ inputs.mt5700m && 'true' || 'false' }}
         run: bash ./scripts/prepare-source.sh "${{ inputs.openwrt_ref }}"
 
       - name: 更新软件源
@@ -96,6 +102,7 @@ jobs:
           INCLUDE_MOSDNS: ${{ inputs.mosdns && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
           INCLUDE_VNSTAT: ${{ inputs.vnstat && 'true' || 'false' }}
+          INCLUDE_MT5700M: ${{ inputs.mt5700m && 'true' || 'false' }}
         run: |
           ./scripts/feeds update -a
           cd ..
@@ -112,6 +119,7 @@ jobs:
           INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
           INCLUDE_VNSTAT: ${{ inputs.vnstat && 'true' || 'false' }}
+          INCLUDE_MT5700M: ${{ inputs.mt5700m && 'true' || 'false' }}
         run: bash ./scripts/apply-package-options.sh
 
       - name: 生成配置
@@ -126,6 +134,7 @@ jobs:
           INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
           INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
           INCLUDE_VNSTAT: ${{ inputs.vnstat && 'true' || 'false' }}
+          INCLUDE_MT5700M: ${{ inputs.mt5700m && 'true' || 'false' }}
         run: bash ./scripts/verify-package-options.sh
 
       - name: 下载源码包

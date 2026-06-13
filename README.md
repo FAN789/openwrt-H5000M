@@ -33,6 +33,7 @@ https://github.com/openwrt/openwrt/pull/21398
 - HomeProxy：`kenzok8/small-package`
 - UPnP：OpenWrt 官方 feeds
 - vnStat2 / luci-app-vnstat2：OpenWrt 官方 feeds
+- MT5700M 管理页面：本项目自带 LuCI 原生实现，参考 `inotdream/mt5700webui-openwrt-server` 和 `Coming-2022/mt5700m_at_control` 的 MT5700M 网络 AT 口与常用 AT 命令，不直接集成其独立 WebUI。
 
 勾选 PassWall、MosDNS、HomeProxy 任意一个时，会自动添加 `kenzok8/small-package`。
 
@@ -50,6 +51,7 @@ https://github.com/openwrt/openwrt/pull/21398
 - `homeproxy`: 默认关闭
 - `mosdns`: 默认开启，勾选 `luci-app-mosdns`，相关依赖由软件包自动带入
 - `vnstat`: 默认开启，勾选 `luci-app-vnstat2`、`vnstat2`、`vnstati2`，用于累计流量统计
+- `mt5700m`: 默认开启，添加 LuCI 原生 `MT5700M 管理` 页面，用于访问模块网络 AT 接口 `192.168.8.1:20249`
 - `create_release`: 默认开启
 - `make_jobs`: 留空，或填写 `4`、`8` 这类线程数
 
@@ -91,6 +93,8 @@ make -j"$(nproc)"
 内置 `luci-app-h5000m-netmode`，可在 LuCI 的“网络 / 出口优先级”中切换有线 WAN 和 5G 模块的优先级。
 
 内置 `luci-app-h5000m-fancontrol`，可在 LuCI 的“系统 / 风扇控制”中设置自动、手动和关闭模式，并显示 PWM、模块温度、CPU 温度和 WiFi 温度。
+
+内置 `luci-app-mt5700m`，可在 LuCI 的“服务 / MT5700M 管理”中查看模块连接、SIM、运营商、信号、温度、LTE/NR 锁定状态，并提供 AT 终端。默认连接模块网络 AT 口 `192.168.8.1:20249`。
 
 ## 本地 Runner
 

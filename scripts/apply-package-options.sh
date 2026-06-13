@@ -11,6 +11,7 @@ INCLUDE_MOSDNS="${INCLUDE_MOSDNS:-false}"
 INCLUDE_UPNP="${INCLUDE_UPNP:-false}"
 INCLUDE_HOMEPROXY="${INCLUDE_HOMEPROXY:-false}"
 INCLUDE_VNSTAT="${INCLUDE_VNSTAT:-false}"
+INCLUDE_MT5700M="${INCLUDE_MT5700M:-false}"
 
 if [ ! -f "${CONFIG_FILE}" ]; then
   echo "未找到 OpenWrt 配置文件：${CONFIG_FILE}"
@@ -40,6 +41,14 @@ CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-h5000m-fancontrol-zh-cn=y
 CONFIG_PACKAGE_luci-i18n-h5000m-netmode-zh-cn=y
 EOF
+
+if [ "${INCLUDE_MT5700M}" = "true" ]; then
+  echo "启用 MT5700M 原生管理页面"
+  append_config <<'EOF'
+CONFIG_PACKAGE_luci-app-mt5700m=y
+CONFIG_PACKAGE_luci-i18n-mt5700m-zh-cn=y
+EOF
+fi
 
 if [ "${INCLUDE_QMODEM}" = "true" ]; then
   echo "启用 QModem"

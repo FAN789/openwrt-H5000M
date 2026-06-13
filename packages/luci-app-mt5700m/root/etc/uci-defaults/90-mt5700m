@@ -1,0 +1,10 @@
+#!/bin/sh
+
+uci -q get mt5700m.settings >/dev/null 2>&1 || uci -q set mt5700m.settings='mt5700m'
+uci -q set mt5700m.settings.enabled="${MT5700M_ENABLED:-1}"
+uci -q set mt5700m.settings.host="$(uci -q get mt5700m.settings.host || echo 192.168.8.1)"
+uci -q set mt5700m.settings.port="$(uci -q get mt5700m.settings.port || echo 20249)"
+uci -q set mt5700m.settings.timeout="$(uci -q get mt5700m.settings.timeout || echo 8)"
+uci -q commit mt5700m
+
+exit 0
