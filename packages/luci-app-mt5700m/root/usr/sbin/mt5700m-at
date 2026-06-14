@@ -83,7 +83,7 @@ at_serial_cmd() {
 	fi
 
 	(
-		sleep 0.1
+		sleep 1
 		printf '%s\r' "${command}" > "${device}"
 	) &
 
@@ -151,7 +151,7 @@ at_sms_send() {
 					stty -F "${device}" 115200 raw -echo -echoe -echok -echoctl -echoke -ixon -ixoff min 0 time 5 2>/dev/null || true
 				fi
 				(
-					sleep 0.1
+					sleep 1
 					printf 'AT+CMGF=1\r' > "${device}"
 					sleep 1
 					printf 'AT+CMGS="%s"\r' "${number}" > "${device}"
