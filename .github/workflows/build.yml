@@ -3,6 +3,14 @@ name: 构建 openwrt-H5000M 固件
 on:
   workflow_dispatch:
     inputs:
+      runner_type:
+        description: 编译机器
+        required: true
+        type: choice
+        default: github-hosted
+        options:
+          - github-hosted
+          - self-hosted
       openwrt_ref:
         description: OpenWrt 版本
         required: true
@@ -59,15 +67,19 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-github-hosted:
-    name: GitHub 托管机编译
-    runs-on: ubuntu-24.04
+  build:
+    name: ${{ inputs.runner_type == 'self-hosted' && 'LXC 本地 runner 编译' || 'GitHub 托管机编译' }}
+    runs-on: ${{ fromJSON(inputs.runner_type == 'self-hosted' && '["self-hosted","Linux","X64","openwrt-h5000m","lxc"]' || '"ubuntu-24.04"') }}
+    env:
+      BUILD_DL_DIR: ${{ inputs.runner_type == 'self-hosted' && '/home/builder/openwrt-h5000m-cache/dl' || '' }}
+      BUILD_CCACHE_DIR: ${{ inputs.runner_type == 'self-hosted' && '/home/builder/openwrt-h5000m-cache/ccache' || '' }}
 
     steps:
       - name: 检出项目
         uses: actions/checkout@v4
 
       - name: 安装依赖
+        if: ${{ inputs.runner_type == 'github-hosted' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -122,6 +134,16 @@ jobs:
           INCLUDE_MT5700M: ${{ inputs.mt5700m && 'true' || 'false' }}
         run: bash ./scripts/apply-package-options.sh
 
+      - name: 配置本地 runner 缓存
+        if: ${{ inputs.runner_type == 'self-hosted' }}
+        run: |
+          mkdir -p "${BUILD_DL_DIR}" "${BUILD_CCACHE_DIR}"
+          {
+            echo "CONFIG_DEVEL=y"
+            echo "CONFIG_CCACHE=y"
+            echo "CONFIG_CCACHE_DIR=\"${BUILD_CCACHE_DIR}\""
+          } >> openwrt/.config
+
       - name: 生成配置
         working-directory: openwrt
         run: make defconfig
@@ -139,16 +161,25 @@ jobs:
 
       - name: 下载源码包
         working-directory: openwrt
-        run: make download -j"$(nproc)"
+        run: |
+          if [ -n "${BUILD_DL_DIR}" ]; then
+            make DL_DIR="${BUILD_DL_DIR}" download -j"$(nproc)"
+          else
+            make download -j"$(nproc)"
+          fi
 
       - name: 编译固件
         id: compile
         working-directory: openwrt
         run: |
+          make_args=()
+          if [ -n "${BUILD_DL_DIR}" ]; then
+            make_args+=(DL_DIR="${BUILD_DL_DIR}")
+          fi
           if [ -n "${{ inputs.make_jobs }}" ]; then
-            make -j"${{ inputs.make_jobs }}"
+            make "${make_args[@]}" -j"${{ inputs.make_jobs }}"
           else
-            make -j"$(nproc)"
+            make "${make_args[@]}" -j"$(nproc)"
           fi
 
       - name: 输出失败详情
