@@ -134,7 +134,6 @@ for radio in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-device
 		2g)
 			uci -q set "${radio}.disabled=0"
 			uci -q set "${radio}.htmode=EHT40"
-			uci -q set "${radio}.txpower=10"
 			;;
 		5g)
 			uci -q set "${radio}.disabled=0"

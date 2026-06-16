@@ -106,9 +106,9 @@ make -j"$(nproc)"
 - WiFi 密码：`1234567890`
 - WiFi 区域：`CN`
 - WiFi 加密：`WPA2-PSK/WPA3-SAE Mixed Mode`（UCI 为 `sae-mixed`）
-- 2.4G WiFi：默认启用，默认带宽 `EHT40`，默认发射功率 `10 dBm`，不由本项目强制指定信道
+- 2.4G WiFi：默认启用，默认带宽 `EHT40`，不由本项目强制指定信道
 - 5G WiFi：默认启用，默认带宽 `EHT160`，不由本项目强制指定信道
-- WiFi 漫游与引导：默认集成 `usteer`，并为同名 SSID 开启 802.11k、邻居报告和 band steering；默认降低 2.4G 发射功率，并允许少量客户端场景下也进行 5G 优先引导。当前 OpenWrt/hostapd 组合不启用 `bss_transition`，避免 WiFi 启动失败
+- WiFi 漫游与引导：默认集成 `usteer`，并为同名 SSID 开启 802.11k、邻居报告和 band steering；允许少量客户端场景下也进行 5G 优先引导。当前 OpenWrt/hostapd 组合不启用 `bss_transition`，避免 WiFi 启动失败
 - MAC 派生：优先使用 U-Boot `ethaddr`，失效时使用 eMMC CID 稳定兜底；ETH1 / 2.4G WiFi / 5G WiFi 分别使用 `base + 1/+2/+3`
 - 有线 WAN 优先：`wan` / `wan6` metric 为 `10`
 - 5G SIM 备用：QModem 生成的 `USB` / `USBv6` metric 为 `50`
