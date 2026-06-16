@@ -74,7 +74,7 @@ env:
 jobs:
   build:
     name: ${{ inputs.runner_type == 'self-hosted' && 'LXC 本地 runner 编译' || 'GitHub 托管机编译' }}
-    runs-on: ${{ inputs.runner_type == 'self-hosted' && 'lxc' || 'ubuntu-24.04' }}
+    runs-on: ${{ fromJSON(inputs.runner_type == 'self-hosted' && '["self-hosted","Linux","X64","homelab","lxc","openwrt-h5000m"]' || '"ubuntu-24.04"') }}
     env:
       BUILD_DL_DIR: ${{ inputs.runner_type == 'self-hosted' && '/home/builder/openwrt-h5000m-cache/dl' || '' }}
 
