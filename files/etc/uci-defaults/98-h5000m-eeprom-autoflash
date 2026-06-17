@@ -1,0 +1,73 @@
+#!/bin/sh
+
+TAG="h5000m-eeprom-autoflash"
+EEPROM="/lib/firmware/h5000m/MT7991_MT7976_EEPROM_BE5040_iPAiLNA.bin"
+PART="/dev/mmcblk0p2"
+COUNT="7680"
+EXPECTED_SHA256="d524a4fd42dc942cae178d465073238f035e89998494c1012218c03662f5dcbd"
+ZERO_SHA256="f6e28ad1753237d42be72be187a88f09a269097eeda24bcf12908db6bd361246"
+
+log() {
+	logger -t "${TAG}" "$*"
+}
+
+file_sha256() {
+	sha256sum "$1" 2>/dev/null | awk '{print $1}'
+}
+
+part_sha256() {
+	dd if="${PART}" bs=1 count="${COUNT}" 2>/dev/null | sha256sum | awk '{print $1}'
+}
+
+[ -f "${EEPROM}" ] || {
+	log "EEPROM file is not included, skip autoflash"
+	exit 0
+}
+
+[ -e "${PART}" ] || {
+	log "${PART} not found, skip autoflash"
+	exit 0
+}
+
+size="$(wc -c < "${EEPROM}" 2>/dev/null | tr -d ' ')"
+if [ "${size}" != "${COUNT}" ]; then
+	log "EEPROM size mismatch: ${size}, expected ${COUNT}; skip"
+	exit 0
+fi
+
+eeprom_sha="$(file_sha256 "${EEPROM}")"
+if [ "${eeprom_sha}" != "${EXPECTED_SHA256}" ]; then
+	log "EEPROM sha256 mismatch: ${eeprom_sha}; skip"
+	exit 0
+fi
+
+current_sha="$(part_sha256)"
+if [ "${current_sha}" = "${EXPECTED_SHA256}" ]; then
+	log "${PART} already contains expected EEPROM, skip"
+	exit 0
+fi
+
+if [ "${current_sha}" != "${ZERO_SHA256}" ]; then
+	log "${PART} is not empty and does not match expected EEPROM, skip"
+	exit 0
+fi
+
+mkdir -p /root/h5000m-eeprom-backup
+backup="/root/h5000m-eeprom-backup/mmcblk0p2-before-autoflash.bin"
+dd if="${PART}" of="${backup}" bs=1 count="${COUNT}" 2>/dev/null || true
+log "backup saved to ${backup}"
+
+if dd if="${EEPROM}" of="${PART}" bs=1 count="${COUNT}" conv=fsync 2>/dev/null; then
+	sync
+	new_sha="$(part_sha256)"
+	if [ "${new_sha}" = "${EXPECTED_SHA256}" ]; then
+		log "EEPROM autoflash completed, rebooting once to reload WiFi calibration"
+		(sleep 20; reboot) >/dev/null 2>&1 &
+		exit 0
+	fi
+	log "EEPROM write verification failed: ${new_sha}"
+	exit 0
+fi
+
+log "EEPROM write failed"
+exit 0

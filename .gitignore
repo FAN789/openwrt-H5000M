@@ -1,9 +1,11 @@
 openwrt/
 dl/
 build-cache/
+tmp/
 .codex-official-fw/
 __pycache__/
 *.log
+files/lib/firmware/h5000m/*.bin
 20*年*月*日*.md
 *交接报告*.md
 *完整会话日志*.md

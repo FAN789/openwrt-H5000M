@@ -59,6 +59,11 @@ on:
         required: true
         type: boolean
         default: true
+      eeprom_autoflash:
+        description: "9. EEPROM：首次启动自动写入 WiFi 校准数据"
+        required: true
+        type: boolean
+        default: false
       create_release:
         description: 发布 Releases
         required: true
@@ -81,6 +86,10 @@ jobs:
     steps:
       - name: 检出项目
         uses: actions/checkout@v4
+
+      - name: 准备 WiFi EEPROM 自动刷写文件
+        if: ${{ inputs.eeprom_autoflash }}
+        run: bash ./scripts/prepare-eeprom-autoflash.sh
 
       - name: 安装依赖
         if: ${{ inputs.runner_type == 'github-hosted' }}

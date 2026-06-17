@@ -45,6 +45,15 @@ dmesg | grep -iE 'mt799|mt76|eeprom|cal|firmware'
 iwinfo
 ```
 
+也可以在 GitHub Actions 手动运行时勾选 `eeprom_autoflash` 构建自动刷写版固件。该选项默认关闭；开启后固件首次启动时会先校验：
+
+- `/lib/firmware/h5000m/MT7991_MT7976_EEPROM_BE5040_iPAiLNA.bin` 必须存在
+- 文件大小必须是 `7680`
+- SHA256 必须是 `d524a4fd42dc942cae178d465073238f035e89998494c1012218c03662f5dcbd`
+- `/dev/mmcblk0p2` 当前 7680 字节必须全 0
+
+如果 `/dev/mmcblk0p2` 已经有非零数据，脚本会跳过，不会覆盖。写入前会把原始 7680 字节备份到 `/root/h5000m-eeprom-backup/mmcblk0p2-before-autoflash.bin`。
+
 ## 项目做什么
 
 1. 拉取指定版本的 OpenWrt 官方源码。
@@ -83,6 +92,7 @@ iwinfo
 - `mosdns`: 默认开启，勾选 `luci-app-mosdns`，相关依赖由软件包自动带入
 - `vnstat`: 默认开启，勾选 `luci-app-vnstat2`、`vnstat2`、`vnstati2`，用于累计流量统计
 - `mt5700m`: 默认开启，添加 `移动网络 / MT5700M 管理` 页面，当前包含内嵌 WebUI，并通过本机 WebSocket/AT 代理访问模块
+- `eeprom_autoflash`: 默认关闭；开启后会在构建时下载 `MT7991_MT7976_EEPROM_BE5040_iPAiLNA.bin` 并打入固件。首次启动时仅在 `/dev/mmcblk0p2` 当前 7680 字节全 0、且 EEPROM 文件大小和 SHA256 均正确时自动写入，写入成功后自动重启一次
 - `create_release`: 默认开启
 - `make_jobs`: 留空，或填写 `4`、`8` 这类线程数
 
