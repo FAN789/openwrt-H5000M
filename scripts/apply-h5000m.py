@@ -91,8 +91,6 @@ DTS = r'''// SPDX-License-Identifier: (GPL-2.0 OR MIT)
 			  130 140 150 160 170 180 190 200 210 220 240 255>;
 	#cooling-cells = <2>;
 	#thermal-sensor-cells = <1>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pwm_fan_pins>;
 	pwms = <&pwm 1 50000 0>;
 	status = "okay";
 };
