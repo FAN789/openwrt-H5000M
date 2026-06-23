@@ -161,7 +161,7 @@ for section in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-ifac
 			;;
 	esac
 	uci -q set "${section}.encryption=sae-mixed"
-	uci -q set "${section}.key=1234567890"
+	uci -q set "${section}.key=77778888"
 	uci -q set "${section}.ieee80211w=1"
 	uci -q set "${section}.ieee80211k=1"
 	uci -q set "${section}.rrm_neighbor_report=1"

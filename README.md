@@ -155,7 +155,7 @@ make -j"$(nproc)"
 - LuCI 默认语言：`auto`
 - 2.4G WiFi 名称：`H5000M-2G`
 - 5G WiFi 名称：`H5000M-5G`
-- WiFi 密码：`1234567890`
+- WiFi 密码：`77778888`
 - WiFi 区域：`CN`
 - WiFi 加密：`WPA2-PSK/WPA3-SAE Mixed Mode`，UCI 中为 `sae-mixed`
 - 2.4G WiFi：默认启用，SSID `H5000M-2G`，默认带宽 `EHT40`，不强制指定信道
