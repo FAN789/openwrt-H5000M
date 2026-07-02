@@ -199,12 +199,26 @@ jobs:
           git config --global http.lowSpeedLimit 0
           git config --global http.postBuffer 524288000
 
+          reset_feed_repo() {
+            local feed="$1"
+            if [ -d "feeds/${feed}/.git" ]; then
+              echo "清理 feed 工作区：${feed}"
+              git -C "feeds/${feed}" reset --hard HEAD
+              git -C "feeds/${feed}" clean -fd
+            fi
+          }
+
+          reset_feed_repo qmodem
+          reset_feed_repo small_package
+
           for attempt in 1 2 3; do
             if ./scripts/feeds update -a; then
               break
             fi
 
             echo "软件源更新失败，清理 small_package 中未使用且可能损坏的 webd 包后重试：${attempt}/3"
+            reset_feed_repo qmodem
+            reset_feed_repo small_package
             rm -rf feeds/small_package/webd
             if [ "${attempt}" = "3" ]; then
               echo "软件源更新重试失败。"
