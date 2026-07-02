@@ -10,7 +10,7 @@ https://github.com/openwrt/openwrt/pull/21398
 当前需要特别注意：
 
 - 官方 PR 使用 `KERNEL_LOADADDR := 0x40000000`，本项目保持一致。
-- H5000M 当前使用 `eth0` 作为 LAN，`eth1` 作为有线 WAN，本项目按 `ucidef_set_interfaces_lan_wan eth0 eth1` 生成默认网口布局。
+- H5000M 当前按官方 PR 方向使用 `eth1` 作为 LAN，`eth0` 作为有线 WAN，本项目按 `ucidef_set_interfaces_lan_wan eth1 eth0` 生成默认网口布局，并在首次启动默认配置中做同向兜底。
 - 官方 PR 当前只把两个 WiFi 指示灯交给 OpenWrt 管理，其他 LED 可能由硬件或厂商服务控制。本项目保持官方 LED 配置，不额外添加 `pwm_led`。
 - 官方 PR 的 `factory` 分区读取方式是从 `mmcblk0p2` 的 `eeprom@0` 读取 `0x1e00` 字节作为 WiFi EEPROM，没有在 `factory` 分区定义有线 MAC。
 - MAC 地址默认从 `/dev/mmcblk0p1` 的 U-Boot 环境变量 `ethaddr` 派生；如果 U-Boot 环境失效，则使用 eMMC CID 生成稳定本地 MAC 作为二级兜底。
