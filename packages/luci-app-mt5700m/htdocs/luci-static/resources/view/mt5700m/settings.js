@@ -7,7 +7,7 @@ return view.extend({
 		var m, s, o;
 
 		m = new form.Map('mt5700m', _('MT5700M Management'));
-		m.description = _('Configure the AT channel used by the native LuCI pages. Auto mode tries the modem gateway network AT endpoint first, then falls back to the QModem AT serial port.');
+		m.description = _('Configure the AT channel used by the native LuCI pages. Auto mode uses the QModem-discovered serial port first, then falls back to the modem network AT endpoint.');
 
 		s = m.section(form.NamedSection, 'settings', 'mt5700m');
 		s.anonymous = true;

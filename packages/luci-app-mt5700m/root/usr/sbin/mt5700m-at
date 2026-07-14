@@ -92,64 +92,6 @@ network_hosts() {
 	fi
 }
 
-at_websocket_cmd() {
-	local command="$1"
-	local ws_port auth_key
-
-	command -v python3 >/dev/null 2>&1 || return 1
-
-	ws_port="$(uci -q get at-webserver.config.websocket_port 2>/dev/null || echo 8765)"
-	auth_key="$(uci -q get at-webserver.config.websocket_auth_key 2>/dev/null || echo '')"
-
-	python3 - "$command" "$ws_port" "$auth_key" <<'PY'
-import asyncio
-import json
-import sys
-
-try:
-    import websockets
-except Exception:
-    sys.exit(1)
-
-command = sys.argv[1]
-port = sys.argv[2]
-auth_key = sys.argv[3] if len(sys.argv) > 3 else ''
-
-async def main():
-    try:
-        async with websockets.connect(f"ws://127.0.0.1:{port}", open_timeout=3, close_timeout=1) as ws:
-            if auth_key:
-                await ws.send(json.dumps({"auth_key": auth_key}))
-                auth = json.loads(await asyncio.wait_for(ws.recv(), timeout=3))
-                if not auth.get("success"):
-                    print(auth.get("message") or auth.get("error") or "WebSocket authentication failed", file=sys.stderr)
-                    return 1
-
-            await ws.send(command)
-
-            while True:
-                msg = await asyncio.wait_for(ws.recv(), timeout=8)
-                if msg in ("ping", "pong"):
-                    if msg == "ping":
-                        await ws.send("pong")
-                    continue
-
-                data = json.loads(msg)
-                if data.get("success"):
-                    if data.get("data"):
-                        print(data["data"])
-                    return 0
-
-                print(data.get("error") or data.get("message") or "AT command failed", file=sys.stderr)
-                return 1
-    except Exception as e:
-        print(str(e), file=sys.stderr)
-        return 1
-
-sys.exit(asyncio.run(main()))
-PY
-}
-
 detect_qmodem_at_port() {
 	local candidate
 
@@ -227,7 +169,6 @@ at_cmd() {
 
 	case "${mode}" in
 		serial)
-			at_websocket_cmd "${command}" && return 0
 			device="$(detect_qmodem_at_port)"
 			[ -n "${device}" ] || {
 				echo "AT serial port not found" >&2
@@ -243,8 +184,6 @@ at_cmd() {
 			return 1
 			;;
 		auto)
-			at_websocket_cmd "${command}" && return 0
-
 			device="$(detect_qmodem_at_port)"
 			if [ -n "${device}" ]; then
 				at_serial_cmd "${command}" "${device}" && return 0

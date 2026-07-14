@@ -44,7 +44,7 @@ https://github.com/openwrt/openwrt/pull/21398
 - UPnP：OpenWrt 官方 feeds
 - ttyd / luci-app-ttyd：OpenWrt 官方 feeds
 - vnStat2 / luci-app-vnstat2：OpenWrt 官方 feeds
-- MT5700M 管理页面：本项目自带 `luci-app-mt5700m`
+- MT5700M 管理页面：本项目自带完全原生的 `luci-app-mt5700m`（不嵌入模块 WebUI）
 
 勾选 PassWall2、MosDNS、HomeProxy 任意一个时，会自动添加 `kenzok8/small-package`。
 
@@ -169,7 +169,7 @@ make -j"$(nproc)"
 
 内置 `luci-app-ttyd`，可在 LuCI 中打开 Web 终端。
 
-内置 `luci-app-mt5700m`，可在 LuCI 的“移动网络 / MT5700M 管理”中打开 MT5700M 管理页面。
+内置 `luci-app-mt5700m`，可在 LuCI 的“移动网络 / MT5700M 管理”中使用概览、网络与小区信息、频段锁定、短信、系统/FOTA、AT 终端和连接设置。页面通过 QModem 发现的 AT 串口直接管理模块，网络 AT 仅作为回退；不嵌入或依赖模块 WebUI。
 
 ## 本地 Runner
 

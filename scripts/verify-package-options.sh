@@ -88,7 +88,6 @@ require_config "CONFIG_PACKAGE_luci-app-h5000m-netmode"
 
 if [ "${INCLUDE_MT5700M}" = "true" ]; then
   require_config "CONFIG_PACKAGE_luci-app-mt5700m"
-  require_config "CONFIG_PACKAGE_at-webserver"
   optional_config "CONFIG_PACKAGE_luci-i18n-mt5700m-zh-cn"
 fi
 

@@ -17,12 +17,42 @@
 			"uci": { "mt5700m": true }
 		}
 	},
-	"admin/modem/mt5700m/webui": {
-		"title": "Native WebUI",
+	"admin/modem/mt5700m/status": {
+		"title": "Overview",
 		"order": 10,
 		"action": {
 			"type": "view",
-			"path": "mt5700m/webui"
+			"path": "mt5700m/status"
 		}
+	},
+	"admin/modem/mt5700m/network": {
+		"title": "Network and Cell Info",
+		"order": 20,
+		"action": { "type": "view", "path": "mt5700m/network" }
+	},
+	"admin/modem/mt5700m/locks": {
+		"title": "Frequency Lock",
+		"order": 30,
+		"action": { "type": "view", "path": "mt5700m/locks" }
+	},
+	"admin/modem/mt5700m/sms": {
+		"title": "SMS Center",
+		"order": 40,
+		"action": { "type": "view", "path": "mt5700m/sms" }
+	},
+	"admin/modem/mt5700m/system": {
+		"title": "System and FOTA",
+		"order": 50,
+		"action": { "type": "view", "path": "mt5700m/system" }
+	},
+	"admin/modem/mt5700m/terminal": {
+		"title": "AT Terminal",
+		"order": 60,
+		"action": { "type": "view", "path": "mt5700m/terminal" }
+	},
+	"admin/modem/mt5700m/settings": {
+		"title": "Settings",
+		"order": 70,
+		"action": { "type": "view", "path": "mt5700m/settings" }
 	}
 }

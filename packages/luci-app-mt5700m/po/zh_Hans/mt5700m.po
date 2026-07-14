@@ -4,6 +4,9 @@ msgstr "Content-Type: text/plain; charset=UTF-8\n"
 msgid "MT5700M Management"
 msgstr "MT5700M 管理"
 
+msgid "Overview"
+msgstr "概览"
+
 msgid "Native LuCI management page for the MT5700M module network AT interface."
 msgstr "用于 MT5700M 模块网络 AT 接口的 LuCI 原生管理页面。"
 
