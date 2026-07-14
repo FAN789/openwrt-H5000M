@@ -68,6 +68,7 @@ cp "${ROOT_DIR}/configs/h5000m.seed" "${SRC_DIR}/.config"
 # OpenWrt 25.x may carry the optional video feed. H5000M does not use it, and
 # GitHub-side TLS interruptions on this feed can fail the whole feed update.
 sed -i '/^[[:space:]]*src-git[[:space:]]\+video[[:space:]]/d' "${SRC_DIR}/feeds.conf.default"
+sed -i '/^[[:space:]]*src-git[[:space:]]\+mt5700m[[:space:]]/d' "${SRC_DIR}/feeds.conf.default"
 
 append_feed_once() {
   local feed_line="$1"
@@ -100,9 +101,6 @@ if [ "${need_small_package}" = "true" ]; then
   append_feed_once "src-git small_package https://github.com/kenzok8/small-package.git"
 fi
 
-if [ "${INCLUDE_MT5700M}" = "true" ]; then
-	append_feed_once "src-git mt5700m https://github.com/FAN789/luci-app-mt5700m.git"
-fi
 
 echo "写入默认 LAN IP、root 密码、WAN 优先级和软件源清理脚本"
 mkdir -p "${SRC_DIR}/files"
@@ -113,6 +111,13 @@ rm -rf "${SRC_DIR}/package/h5000m-custom"
 mkdir -p "${SRC_DIR}/package/h5000m-custom"
 cp -a "${ROOT_DIR}/packages/." "${SRC_DIR}/package/h5000m-custom/"
 rm -rf "${SRC_DIR}/package/h5000m-custom/luci-app-mt5700m"
+
+if [ "${INCLUDE_MT5700M}" = "true" ]; then
+	mt5700m_tmp="$(mktemp -d)"
+	git clone --depth=1 https://github.com/FAN789/luci-app-mt5700m.git "${mt5700m_tmp}/feed"
+	cp -a "${mt5700m_tmp}/feed/luci-app-mt5700m" "${SRC_DIR}/package/h5000m-custom/"
+	rm -rf "${mt5700m_tmp}"
+fi
 
 echo "OpenWrt 官方源码已准备完成：${SRC_DIR}"
 echo "当前源码版本：${REF}"
