@@ -125,7 +125,7 @@ at_network_cmd() {
 at_serial_cmd() {
 	local command="$1"
 	local device="$2"
-	local tmp reader rc
+	local tmp reader elapsed output
 
 	[ -e "${device}" ] || return 1
 
@@ -141,22 +141,27 @@ at_serial_cmd() {
 
 	printf '%s\r' "${command}" > "${device}"
 
-	run_with_timeout "${timeout_s}" tail -f "${tmp}" 2>/dev/null | awk '
-		{
-			gsub(/\r/, "")
-			print
-		}
-		/^OK$/ || /^ERROR$/ || /^\+CME ERROR/ || /^\+CMS ERROR/ {
-			exit
-		}
-	'
-	rc="$?"
+	elapsed=0
+	while [ "${elapsed}" -lt "${timeout_s}" ]; do
+		output="$(tr -d '\r' < "${tmp}" 2>/dev/null || true)"
+		if printf '%s\n' "${output}" | grep -Eq '(^|\n)(OK|ERROR|\+CME ERROR|\+CMS ERROR)(\n|$)'; then
+			printf '%s\n' "${output}"
+			kill "${reader}" 2>/dev/null || true
+			wait "${reader}" 2>/dev/null || true
+			rm -f "${tmp}"
+			return 0
+		fi
+		sleep 1
+		elapsed=$((elapsed + 1))
+	done
 
 	kill "${reader}" 2>/dev/null || true
 	wait "${reader}" 2>/dev/null || true
+	output="$(tr -d '\r' < "${tmp}" 2>/dev/null || true)"
 	rm -f "${tmp}"
 
-	return "${rc}"
+	[ -n "${output}" ] && printf '%s\n' "${output}"
+	return 1
 }
 
 at_cmd() {
@@ -186,7 +191,8 @@ at_cmd() {
 		auto)
 			device="$(detect_qmodem_at_port)"
 			if [ -n "${device}" ]; then
-				at_serial_cmd "${command}" "${device}" && return 0
+				at_serial_cmd "${command}" "${device}"
+				return $?
 			fi
 
 			for target in $(network_hosts); do
@@ -597,10 +603,12 @@ case "${1:-status}" in
 		echo "port=${port}"
 		detected_gateway="$(detect_modem_gateway || true)"
 		echo "detected_gateway=${detected_gateway}"
-		if [ "${mode}" = "network" ] || { [ "${mode}" = "auto" ] && [ -n "${detected_gateway}" ]; }; then
+		if [ "${mode}" = "network" ]; then
 			echo "channel=network"
-		else
+		elif [ -n "${detected_at_port}" ]; then
 			echo "channel=serial"
+		else
+			echo "channel=network"
 		fi
 		if at_cmd 'AT' | grep -q 'OK'; then
 			echo "connected=1"
