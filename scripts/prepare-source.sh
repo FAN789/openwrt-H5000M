@@ -12,6 +12,7 @@ INCLUDE_PASSWALL2="${INCLUDE_PASSWALL2:-${INCLUDE_PASSWALL:-false}}"
 INCLUDE_MOSDNS="${INCLUDE_MOSDNS:-false}"
 INCLUDE_UPNP="${INCLUDE_UPNP:-false}"
 INCLUDE_HOMEPROXY="${INCLUDE_HOMEPROXY:-false}"
+INCLUDE_MT5700M="${INCLUDE_MT5700M:-false}"
 
 git config --global --unset-all http.proxy >/dev/null 2>&1 || true
 git config --global --unset-all https.proxy >/dev/null 2>&1 || true
@@ -99,6 +100,10 @@ if [ "${need_small_package}" = "true" ]; then
   append_feed_once "src-git small_package https://github.com/kenzok8/small-package.git"
 fi
 
+if [ "${INCLUDE_MT5700M}" = "true" ]; then
+	append_feed_once "src-git mt5700m https://github.com/FAN789/luci-app-mt5700m.git"
+fi
+
 echo "写入默认 LAN IP、root 密码、WAN 优先级和软件源清理脚本"
 mkdir -p "${SRC_DIR}/files"
 cp -a "${ROOT_DIR}/files/." "${SRC_DIR}/files/"
@@ -107,6 +112,7 @@ echo "写入 H5000M 自定义软件包"
 rm -rf "${SRC_DIR}/package/h5000m-custom"
 mkdir -p "${SRC_DIR}/package/h5000m-custom"
 cp -a "${ROOT_DIR}/packages/." "${SRC_DIR}/package/h5000m-custom/"
+rm -rf "${SRC_DIR}/package/h5000m-custom/luci-app-mt5700m"
 
 echo "OpenWrt 官方源码已准备完成：${SRC_DIR}"
 echo "当前源码版本：${REF}"

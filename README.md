@@ -44,7 +44,7 @@ https://github.com/openwrt/openwrt/pull/21398
 - UPnP：OpenWrt 官方 feeds
 - ttyd / luci-app-ttyd：OpenWrt 官方 feeds
 - vnStat2 / luci-app-vnstat2：OpenWrt 官方 feeds
-- MT5700M 管理页面：本项目自带完全原生的 `luci-app-mt5700m`（不嵌入模块 WebUI）
+- MT5700M 管理页面：独立 feed 包 [`FAN789/luci-app-mt5700m`](https://github.com/FAN789/luci-app-mt5700m)，构建时按选项拉取（不嵌入模块 WebUI）
 
 勾选 PassWall2、MosDNS、HomeProxy 任意一个时，会自动添加 `kenzok8/small-package`。
 
