@@ -9,4 +9,22 @@ uci -q set mt5700m.settings.port="$(uci -q get mt5700m.settings.port || echo 202
 uci -q set mt5700m.settings.timeout="$(uci -q get mt5700m.settings.timeout || echo 8)"
 uci -q commit mt5700m
 
+# QModem and this manager must share at-daemon instead of opening the modem
+# serial device independently. Limit the setting to the MT5700M section.
+for section in $(uci -q show qmodem 2>/dev/null | sed -n "s/^qmodem\.\([^.=]*\)=modem-device$/\1/p;s/^qmodem\.\([^.=]*\)='modem-device'$/\1/p"); do
+	match=0
+	for value in \
+		"$(uci -q get qmodem.${section}.at_port)" \
+		"$(uci -q get qmodem.${section}.name)" \
+		"$(uci -q get qmodem.${section}.manufacturer)" \
+		"$(uci -q get qmodem.${section}.platform)" \
+		"$(uci -q get qmodem.${section}.path)"; do
+		case "${value}" in
+			*/ttyUSB1|*[Mm][Tt]5700*|*[Hh]uawei*|*[Hh]isilicon*|*/2-1/*) match=1 ;;
+		esac
+	done
+	[ "${match}" = "1" ] && uci -q set qmodem.${section}.use_ubus='1'
+done
+uci -q commit qmodem
+
 exit 0

@@ -10,6 +10,45 @@ msgstr "概览"
 msgid "Native LuCI management page for the MT5700M module network AT interface."
 msgstr "用于 MT5700M 模块网络 AT 接口的 LuCI 原生管理页面。"
 
+msgid "Mobile Network"
+msgstr "移动网络"
+
+msgid "%s network is available and the modem is operating normally."
+msgstr "%s 网络已就绪，模块运行正常。"
+
+msgid "The modem did not respond. Check the AT channel and module connection."
+msgstr "模块没有响应，请检查 AT 通道和模块连接。"
+
+msgid "Signal and temperature"
+msgstr "信号与温度"
+
+msgid "Device details"
+msgstr "设备详情"
+
+msgid "Module information"
+msgstr "模块信息"
+
+msgid "Model"
+msgstr "型号"
+
+msgid "Firmware version"
+msgstr "固件版本"
+
+msgid "IMEI"
+msgstr "IMEI"
+
+msgid "Frequency lock"
+msgstr "锁频状态"
+
+msgid "Not locked"
+msgstr "未锁定"
+
+msgid "Locked"
+msgstr "已锁定"
+
+msgid "Refresh status"
+msgstr "刷新状态"
+
 msgid "Connection"
 msgstr "连接"
 
@@ -129,6 +168,702 @@ msgstr "AT 终端"
 
 msgid "Settings"
 msgstr "设置"
+
+msgid "Advanced Settings"
+msgstr "高级设置"
+
+msgid "Advanced modem settings"
+msgstr "高级设置"
+
+msgid "These options write directly to the MT5700M. Review the current values before applying changes."
+msgstr "这些选项会直接写入 MT5700M，应用前请仔细核对当前配置。"
+
+msgid "Changing dial mode, APN or IP passthrough can temporarily interrupt the 5G connection."
+msgstr "更改拨号方式、APN 或 IP 直通可能会暂时中断 5G 连接。"
+
+msgid "Automatic dialing and APN"
+msgstr "自动拨号与 APN"
+
+msgid "Configure the modem-managed data session used by the Ethernet connection."
+msgstr "配置模块通过网口提供的移动数据连接。"
+
+msgid "Automatic dialing"
+msgstr "自动拨号"
+
+msgid "Dial mode"
+msgstr "拨号方式"
+
+msgid "Ethernet mode"
+msgstr "转网口模式"
+
+msgid "USB mode"
+msgstr "USB 模式"
+
+msgid "PDP protocol"
+msgstr "PDP 协议"
+
+msgid "Leave empty to use carrier default"
+msgstr "留空则使用运营商默认值"
+
+msgid "Username"
+msgstr "用户名"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "Authentication"
+msgstr "认证方式"
+
+msgid "None"
+msgstr "无"
+
+msgid "IP passthrough"
+msgstr "IP 直通"
+
+msgid "Select a setting"
+msgstr "请选择设置"
+
+msgid "Select an explicit IP passthrough setting first."
+msgstr "请先明确选择开启或关闭 IP 直通。"
+
+msgid "Pass the mobile-network IP address directly to the connected host instead of using the module router."
+msgstr "将移动网络地址直接分配给连接设备，不经过模块内部路由。"
+
+msgid "Current low-level configuration"
+msgstr "当前底层配置"
+
+msgid "Interface mode"
+msgstr "网口模式"
+
+msgid "Radio mode"
+msgstr "网络制式配置"
+
+msgid "Linux-ECM debug mode"
+msgstr "Linux-ECM 调试模式"
+
+msgid "Windows-NCM debug mode"
+msgstr "Windows-NCM 调试模式"
+
+msgid "Linux-NCM debug mode"
+msgstr "Linux-NCM 调试模式"
+
+msgid "USB Stick + Ethernet router mode"
+msgstr "USB Stick + 网口路由模式"
+
+msgid "USB router + Ethernet router mode"
+msgstr "USB 路由 + 网口路由模式"
+
+msgid "Ethernet passthrough mode"
+msgstr "网口直通模式"
+
+msgid "Post-routing"
+msgstr "后路由"
+
+msgid "Frequency selection"
+msgstr "频段与小区选择"
+
+msgid "Limit the modem to specific bands or cells only when network troubleshooting requires it. Incorrect values can interrupt mobile connectivity."
+msgstr "仅在网络排查确有需要时限制模块使用的频段或小区，错误参数可能导致移动网络中断。"
+
+msgid "Remove Lock"
+msgstr "解除锁定"
+
+msgid "Complete all required fields using comma-separated numbers."
+msgstr "请填写全部必填项，并使用英文逗号分隔数字。"
+
+msgid "Each field must contain the same number of values."
+msgstr "各字段包含的参数数量必须一致。"
+
+msgid "Confirm frequency change"
+msgstr "确认更改频率设置"
+
+msgid "Remove the current %s frequency lock?"
+msgstr "确定解除当前 %s 频率锁定吗？"
+
+msgid "Apply this %s frequency lock? Mobile connectivity may reconnect."
+msgstr "确定应用此 %s 频率锁定吗？移动网络可能会重新连接。"
+
+msgid "Apply Lock"
+msgstr "应用锁定"
+
+msgid "Frequency lock updated."
+msgstr "频率锁定已更新。"
+
+msgid "The modem rejected this setting."
+msgstr "模块拒绝了此设置。"
+
+msgid "Configure 5G NR frequency selection."
+msgstr "配置 5G NR 频率选择。"
+
+msgid "Configure LTE frequency selection."
+msgstr "配置 LTE 频率选择。"
+
+msgid "Choose the least restrictive mode that meets your need."
+msgstr "请选择能够满足需求且限制最少的方式。"
+
+msgid "Use numbers separated by commas."
+msgstr "使用英文逗号分隔数字。"
+
+msgid "One ARFCN for each band."
+msgstr "每个频段对应一个 ARFCN。"
+
+msgid "One SCS type for each NR band."
+msgstr "每个 NR 频段对应一个 SCS 类型。"
+
+msgid "One PCI for each band and ARFCN."
+msgstr "每组频段和 ARFCN 对应一个 PCI。"
+
+msgid "Review and apply"
+msgstr "检查并应用"
+
+msgid "LTE network"
+msgstr "LTE 网络"
+
+msgid "5G NR network"
+msgstr "5G NR 网络"
+
+msgid "Messages"
+msgstr "短信"
+
+msgid "Read and send text messages using the SIM installed in the MT5700M."
+msgstr "使用 MT5700M 中安装的 SIM 卡收发短信。"
+
+msgid "New message"
+msgstr "新短信"
+
+msgid "Inbox"
+msgstr "收件箱"
+
+msgid "Recipient"
+msgstr "收件人"
+
+msgid "Enter message text"
+msgstr "输入短信内容"
+
+msgid "Send message"
+msgstr "发送短信"
+
+msgid "No messages"
+msgstr "暂无短信"
+
+msgid "Messages stored on the module will appear here."
+msgstr "保存在模块中的短信会显示在这里。"
+
+msgid "Unknown sender"
+msgstr "未知发件人"
+
+msgid "Empty message"
+msgstr "空短信"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Delete message?"
+msgstr "删除短信？"
+
+msgid "This removes the selected message from the module."
+msgstr "所选短信将从模块中删除。"
+
+msgid "Enter a valid phone number and message."
+msgstr "请输入有效的电话号码和短信内容。"
+
+msgid "Send message?"
+msgstr "发送短信？"
+
+msgid "Send this message to %s?"
+msgstr "确定将此短信发送给 %s 吗？"
+
+msgid "Message sent."
+msgstr "短信已发送。"
+
+msgid "AT command console"
+msgstr "AT 命令控制台"
+
+msgid "Diagnostic console for advanced users. Commands are sent directly to the MT5700M and are not automatically validated."
+msgstr "面向高级用户的诊断控制台。命令会直接发送给 MT5700M，不会自动校验。"
+
+msgid "Use query commands whenever possible. Configuration and reset commands may interrupt mobile connectivity."
+msgstr "请尽量使用查询命令，配置或复位命令可能会中断移动网络。"
+
+msgid "Module connection"
+msgstr "模块连接"
+
+msgid "Choose how this manager communicates with the MT5700M. Auto mode is recommended and normally requires no changes."
+msgstr "选择管理器与 MT5700M 的通信方式。建议使用自动模式，通常无需修改。"
+
+msgid "AT communication"
+msgstr "AT 通信"
+
+msgid "Changes here affect only the management channel; they do not change the mobile network or APN."
+msgstr "这里的更改只影响管理通道，不会修改移动网络或 APN。"
+
+msgid "Enable module management"
+msgstr "启用模块管理"
+
+msgid "Connection method"
+msgstr "连接方式"
+
+msgid "Automatic (recommended)"
+msgstr "自动（推荐）"
+
+msgid "Response timeout"
+msgstr "响应超时"
+
+msgid "Frequency Selection"
+msgstr "频段与小区"
+
+msgid "AT Console"
+msgstr "AT 控制台"
+
+msgid "Module Connection"
+msgstr "模块连接"
+
+msgid "Enabled"
+msgstr "开启"
+
+msgid "Disabled"
+msgstr "关闭"
+
+msgid "Connection, Ethernet, radio and hardware controls supported by this MT5700M firmware."
+msgstr "管理当前 MT5700M 固件支持的连接、网口、无线能力和硬件功能。"
+
+msgid "Ports and modes"
+msgstr "端口与模式"
+
+msgid "Routing"
+msgstr "路由功能"
+
+msgid "5G capabilities"
+msgstr "5G 能力"
+
+msgid "Device behavior"
+msgstr "设备功能"
+
+msgid "A module restart is required before this change takes effect."
+msgstr "此项更改需要重启模块后才能生效。"
+
+msgid "Settings applied."
+msgstr "设置已应用。"
+
+msgid "Configure the mobile data session provided by the module."
+msgstr "配置由模块提供的移动数据连接。"
+
+msgid "Assign the mobile-network address directly to the connected host."
+msgstr "将移动网络地址直接分配给连接的设备。"
+
+msgid "This may interrupt connectivity and change host addressing."
+msgstr "这可能会中断连接并改变设备获得的地址。"
+
+msgid "Ethernet controller"
+msgstr "网口控制器"
+
+msgid "Select the hardware profile used by the PCIe Ethernet controller."
+msgstr "选择 PCIe 网口控制器使用的硬件速率配置。"
+
+msgid "Ethernet speed"
+msgstr "网口速率"
+
+msgid "The detected hardware supports both 1 Gbps and 2.5 Gbps profiles."
+msgstr "检测到的硬件支持 1 Gbps 和 2.5 Gbps 两种配置。"
+
+msgid "Apply speed"
+msgstr "应用速率"
+
+msgid "Change Ethernet speed"
+msgstr "修改网口速率"
+
+msgid "The Ethernet controller profile will be changed."
+msgstr "即将修改网口控制器的速率配置。"
+
+msgid "USB data mode"
+msgstr "USB 数据模式"
+
+msgid "Choose the USB network driver profile presented by the module."
+msgstr "选择模块向主机提供的 USB 网络驱动模式。"
+
+msgid "Apply USB mode"
+msgstr "应用 USB 模式"
+
+msgid "Change USB mode"
+msgstr "修改 USB 模式"
+
+msgid "USB connectivity may disappear until the module restarts."
+msgstr "在模块重启前，USB 网络连接可能会暂时消失。"
+
+msgid "Ethernet operating mode"
+msgstr "网口工作模式"
+
+msgid "Control whether Ethernet is routed by the module or receives the mobile IP directly."
+msgstr "选择网口由模块进行路由，或直接获得移动网络地址。"
+
+msgid "Apply interface mode"
+msgstr "应用网口模式"
+
+msgid "Change interface mode"
+msgstr "修改网口模式"
+
+msgid "This changes Ethernet addressing and may disconnect the current session."
+msgstr "这会改变网口地址分配，并可能中断当前连接。"
+
+msgid "Enable the module post-routing path. This is mutually exclusive with DMZ."
+msgstr "启用模块后路由功能；此功能与 DMZ 互斥。"
+
+msgid "Apply setting"
+msgstr "应用设置"
+
+msgid "Change post-routing"
+msgstr "修改后路由"
+
+msgid "The mobile data session may need to reconnect."
+msgstr "移动数据连接可能需要重新拨号。"
+
+msgid "DMZ host"
+msgstr "DMZ 主机"
+
+msgid "Forward unsolicited inbound traffic to one host on the module LAN."
+msgstr "将外部主动访问流量转发给模块局域网中的一台设备。"
+
+msgid "DMZ address"
+msgstr "DMZ 地址"
+
+msgid "Only addresses from 192.168.8.1 to 192.168.8.254 are accepted. Leave empty to disable DMZ."
+msgstr "仅接受 192.168.8.1 至 192.168.8.254，留空可关闭 DMZ。"
+
+msgid "Apply DMZ"
+msgstr "应用 DMZ"
+
+msgid "Change DMZ host"
+msgstr "修改 DMZ 主机"
+
+msgid "The selected host may be exposed to the public mobile network."
+msgstr "所选设备可能会直接暴露在移动公网中。"
+
+msgid "Configure modem radio capabilities. Changes normally require an airplane-mode cycle."
+msgstr "配置模块无线能力；更改后通常需要切换一次飞行模式。"
+
+msgid "Carrier aggregation"
+msgstr "载波聚合"
+
+msgid "VoNR mode"
+msgstr "VoNR 模式"
+
+msgid "DSS rate matching"
+msgstr "DSS 速率匹配"
+
+msgid "Additional DMRS"
+msgstr "附加 DMRS"
+
+msgid "Apply radio capabilities"
+msgstr "应用无线能力"
+
+msgid "Choose a setting to apply"
+msgstr "选择要应用的设置"
+
+msgid "Apply each radio capability independently to reduce the risk of an invalid combination."
+msgstr "请逐项应用无线能力设置，以降低无效组合带来的风险。"
+
+msgid "Apply the selected carrier aggregation setting?"
+msgstr "确定应用所选载波聚合设置吗？"
+
+msgid "Apply the selected VoNR mode?"
+msgstr "确定应用所选 VoNR 模式吗？"
+
+msgid "Apply the selected DSS settings?"
+msgstr "确定应用所选 DSS 设置吗？"
+
+msgid "Current radio profile"
+msgstr "当前无线配置"
+
+msgid "Read-only values reported by the modem."
+msgstr "以下为模块报告的只读信息。"
+
+msgid "SIM slot"
+msgstr "SIM 卡槽"
+
+msgid "External SIM"
+msgstr "外置 SIM 卡"
+
+msgid "Internal SIM"
+msgstr "内置 SIM 卡"
+
+msgid "Performance and SIM"
+msgstr "性能与 SIM 卡"
+
+msgid "Tune module performance and external SIM handling."
+msgstr "调整模块性能和外置 SIM 卡处理方式。"
+
+msgid "Performance profile"
+msgstr "性能模式"
+
+msgid "Balanced"
+msgstr "均衡"
+
+msgid "Performance"
+msgstr "高性能"
+
+msgid "SIM hotplug"
+msgstr "SIM 卡热插拔"
+
+msgid "Apply device setting"
+msgstr "应用设备设置"
+
+msgid "Apply the selected performance profile?"
+msgstr "确定应用所选性能模式吗？"
+
+msgid "Apply the selected SIM hotplug setting?"
+msgstr "确定应用所选 SIM 卡热插拔设置吗？"
+
+msgid "Thermal protection"
+msgstr "温度保护"
+
+msgid "Configure the module built-in thermal protection polling."
+msgstr "配置模块内置的温度保护检测。"
+
+msgid "Reduce MIMO when hot"
+msgstr "高温时降低 MIMO"
+
+msgid "Temperature interval"
+msgstr "温度检测间隔"
+
+msgid "Apply thermal settings"
+msgstr "应用温控设置"
+
+msgid "Apply these thermal protection settings?"
+msgstr "确定应用这些温度保护设置吗？"
+
+msgid "Frequency and cell selection"
+msgstr "频段与小区选择"
+
+msgid "Advanced controls for limiting LTE or 5G NR bands, frequencies and cells. Leave these unlocked for normal automatic network selection."
+msgstr "可限制 LTE 或 5G NR 的频段、频点和小区；日常使用建议保持未锁定，让模块自动选网。"
+
+msgid "Conversations using the SIM installed in the MT5700M."
+msgstr "使用 MT5700M 中的 SIM 卡查看和发送短信。"
+
+msgid "Conversations"
+msgstr "会话"
+
+msgid "Select a conversation"
+msgstr "选择一个会话"
+
+msgid "Start a new conversation"
+msgstr "开始新会话"
+
+msgid "Enter a phone number below and write your message."
+msgstr "在下方输入电话号码并填写短信内容。"
+
+msgid "Write a message…"
+msgstr "输入短信内容…"
+
+msgid "%s of %s message slots used"
+msgstr "已使用 %s / %s 个短信存储位置"
+
+msgid "Storage status unavailable"
+msgstr "暂时无法获取存储状态"
+
+msgid "Message settings"
+msgstr "短信设置"
+
+msgid "SMS service"
+msgstr "短信服务"
+
+msgid "Ready (IMS enabled)"
+msgstr "可用（IMS 已开启）"
+
+msgid "Unavailable (IMS disabled)"
+msgstr "不可用（IMS 未开启）"
+
+msgid "Message center"
+msgstr "短信中心号码"
+
+msgid "Storage location"
+msgstr "存储位置"
+
+msgid "SIM card"
+msgstr "SIM 卡"
+
+msgid "Module storage"
+msgstr "模块存储"
+
+msgid "Enter a valid message center number."
+msgstr "请输入有效的短信中心号码。"
+
+msgid "Save settings"
+msgstr "保存设置"
+
+msgid "Message settings saved."
+msgstr "短信设置已保存。"
+
+msgid "Clearing module messages cannot be undone."
+msgstr "清空模块短信后无法恢复。"
+
+msgid "Clear all messages"
+msgstr "清空全部短信"
+
+msgid "Clear all messages?"
+msgstr "清空全部短信？"
+
+msgid "Every received message stored on the module will be permanently deleted."
+msgstr "模块中保存的所有已收短信都将被永久删除。"
+
+msgid "Clear all"
+msgstr "全部清空"
+
+msgid "Configured"
+msgstr "已配置"
+
+msgid "Not configured"
+msgstr "未配置"
+
+msgid "Technical radio configuration"
+msgstr "网络制式技术参数"
+
+msgid "PDP contexts"
+msgstr "PDP 上下文"
+
+msgid "Apply dial settings"
+msgstr "应用拨号设置"
+
+msgid "The mobile data session may disconnect and reconnect."
+msgstr "移动数据连接可能会断开并重新连接。"
+
+msgid "Apply IP passthrough"
+msgstr "应用 IP 直通"
+
+msgid "This change can alter addressing on the 5G interface and interrupt connectivity."
+msgstr "此操作会改变 5G 接口的地址分配，并可能中断连接。"
+
+msgid "Apply settings"
+msgstr "应用设置"
+
+msgid "Settings applied. The modem may reconnect."
+msgstr "设置已应用，模块可能会重新连接。"
+
+msgid "NETWORK AND CELL"
+msgstr "网络与小区"
+
+msgid "Serving-cell and registration information reported by the modem."
+msgstr "模块当前上报的服务小区与网络注册信息。"
+
+msgid "Registered"
+msgstr "已注册"
+
+msgid "Not registered"
+msgstr "未注册"
+
+msgid "Serving cell"
+msgstr "服务小区"
+
+msgid "Radio access"
+msgstr "接入制式"
+
+msgid "Registration"
+msgstr "注册状态"
+
+msgid "Roaming"
+msgstr "漫游网络"
+
+msgid "Home network"
+msgstr "本地网络"
+
+msgid "Technical details"
+msgstr "技术详情"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "MODEM SYSTEM"
+msgstr "模块系统"
+
+msgid "Device identity"
+msgstr "设备信息"
+
+msgid "Hardware version"
+msgstr "硬件版本"
+
+msgid "Runtime status"
+msgstr "运行状态"
+
+msgid "Build date"
+msgstr "构建日期"
+
+msgid "FOTA mode"
+msgstr "FOTA 模式"
+
+msgid "HTTP update mode"
+msgstr "HTTP 更新模式"
+
+msgid "Firmware update"
+msgstr "固件更新"
+
+msgid "Use an MT5700M-compatible HTTP update server. Do not interrupt power during installation."
+msgstr "请使用兼容 MT5700M 的 HTTP 更新服务器，安装过程中请勿断电。"
+
+msgid "Waiting to download"
+msgstr "等待下载"
+
+msgid "Checking for updates"
+msgstr "正在检查更新"
+
+msgid "Update available"
+msgstr "发现新版本"
+
+msgid "Update check failed"
+msgstr "检查更新失败"
+
+msgid "No update available"
+msgstr "没有可用更新"
+
+msgid "Download failed"
+msgstr "下载失败"
+
+msgid "Downloading"
+msgstr "正在下载"
+
+msgid "Download paused"
+msgstr "下载已暂停"
+
+msgid "Download complete"
+msgstr "下载完成"
+
+msgid "Preparing installation"
+msgstr "准备安装"
+
+msgid "Idle"
+msgstr "空闲"
+
+msgid "%d%% complete"
+msgstr "已完成 %d%%"
+
+msgid "Enter a valid HTTP update-server URL."
+msgstr "请输入有效的 HTTP 更新服务器地址。"
+
+msgid "Start firmware download"
+msgstr "开始固件下载"
+
+msgid "The modem will contact the specified server and may temporarily use mobile data."
+msgstr "模块将连接指定服务器，并可能使用移动网络流量。"
+
+msgid "Check and download"
+msgstr "检查并下载"
+
+msgid "Resume download"
+msgstr "继续下载"
+
+msgid "Resume the paused firmware download?"
+msgstr "继续已暂停的固件下载？"
+
+msgid "Install firmware"
+msgstr "安装固件"
+
+msgid "The modem will restart. Do not disconnect power until installation is complete."
+msgstr "模块将会重启，安装完成前请勿断电。"
+
+msgid "Install update"
+msgstr "安装更新"
+
+msgid "Command accepted by the modem."
+msgstr "模块已接受操作指令。"
 
 msgid "Network and Cell Info"
 msgstr "网络与小区信息"
@@ -265,6 +1000,9 @@ msgstr "开始升级"
 msgid "Configure the AT channel used by the native LuCI pages. Auto mode tries the modem gateway network AT endpoint first, then falls back to the QModem AT serial port."
 msgstr "配置 LuCI 原生页面使用的 AT 通道。自动模式会优先尝试模块网关上的网络 AT 接口，失败后再回退到 QModem 发现的 AT 串口。"
 
+msgid "Configure the AT channel used by the native LuCI pages. Auto mode uses the QModem-discovered serial port first, then falls back to the modem network AT endpoint."
+msgstr "配置管理页面使用的 AT 通道。自动模式优先使用 QModem 发现的串口，无法使用时再回退到模块网络 AT 接口。"
+
 msgid "AT Channel"
 msgstr "AT 通道"
 
@@ -291,3 +1029,132 @@ msgstr "原生界面"
 
 msgid "Open in new tab"
 msgstr "新标签打开"
+
+msgid "5G Modem"
+msgstr "5G 模组"
+
+msgid "Connection and Dialing"
+msgstr "连接与拨号"
+
+msgid "Manager Settings"
+msgstr "管理器设置"
+
+msgid "Mobile connection"
+msgstr "移动网络连接"
+
+msgid "Dialing service"
+msgstr "拨号服务"
+
+msgid "Enable automatic dialing"
+msgstr "启用自动拨号"
+
+msgid "Mobile network profile"
+msgstr "移动网络配置"
+
+msgid "Use this modem for dialing"
+msgstr "使用此模组拨号"
+
+msgid "IP protocol"
+msgstr "IP 协议"
+
+msgid "IPv4 / IPv6"
+msgstr "IPv4 / IPv6"
+
+msgid "Route metric"
+msgstr "路由跃点"
+
+msgid "Custom DNS"
+msgstr "自定义 DNS"
+
+msgid "Dialing process"
+msgstr "拨号进程"
+
+msgid "Network interface"
+msgstr "网络接口"
+
+msgid "Driver mode"
+msgstr "驱动模式"
+
+msgid "Recent dialing log"
+msgstr "近期拨号日志"
+
+msgid "Management backend"
+msgstr "管理后端"
+
+msgid "QModem unified"
+msgstr "QModem 统一管理"
+
+msgid "Direct AT fallback"
+msgstr "AT 直连回退"
+
+msgid "The MT5700M interface and QModem dialing backend now share one configuration. Saving these fields updates the active dialing profile."
+msgstr "MT5700M 界面与 QModem 拨号后端共用同一份配置；保存后会更新当前拨号参数。"
+
+msgid "QModem manages detection and dialing; this page provides the device-focused controls."
+msgstr "QModem 负责模组发现与拨号，本页面提供面向设备的统一操作。"
+
+msgid "A smaller value gives this mobile connection a higher route priority."
+msgstr "数值越小，此移动连接的路由优先级越高。"
+
+msgid "Leave empty to use DNS supplied by the mobile network."
+msgstr "留空时使用运营商下发的 DNS。"
+
+msgid "No QModem-managed modem was found. Check the module connection and QModem service."
+msgstr "未发现由 QModem 管理的模组，请检查模组连接和 QModem 服务。"
+
+msgid "Redial"
+msgstr "重新拨号"
+
+msgid "Connect"
+msgstr "连接"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Mobile data"
+msgstr "移动数据"
+
+msgid "Advanced"
+msgstr "高级"
+
+msgid "Supported modes"
+msgstr "支持模式"
+
+msgid "Loading dialing log…"
+msgstr "正在载入拨号日志…"
+
+msgid "Expand to load the dialing log."
+msgstr "展开后载入拨号日志。"
+
+msgid "After changing APN, IP protocol or authentication, save the configuration and then redial to apply it."
+msgstr "修改 APN、IP 协议或认证方式后，请先保存配置，再重新拨号使其生效。"
+
+msgid "Module internal auto-dial (expert)"
+msgstr "模组内部自动拨号（专家功能）"
+
+msgid "This controls the modem firmware itself, not QModem. Normally configure APN and dialing on the Connection and Dialing page; change this only for standalone or passthrough deployments."
+msgstr "此处控制的是模组固件自身，并非 QModem。通常请在“连接与拨号”页面配置 APN 和拨号；仅在独立运行或透传部署时修改此项。"
+
+msgid "Using both module auto-dial and QModem dialing with different APN settings may cause confusing connection behavior."
+msgstr "若同时启用模组内部自动拨号与 QModem 拨号，并配置不同的 APN，可能导致连接行为异常或难以判断。"
+
+msgid "Apply module setting"
+msgstr "应用模组设置"
+
+msgid "Apply module auto-dial settings"
+msgstr "应用模组自动拨号设置"
+
+msgid "The module-side mobile data session may disconnect and reconnect."
+msgstr "模组侧的移动数据连接可能会断开并重新连接。"
+
+msgid "Unknown state"
+msgstr "未知状态"
+
+msgid "Status unavailable"
+msgstr "状态暂不可用"
+
+msgid "Message operation failed."
+msgstr "短信操作失败。"

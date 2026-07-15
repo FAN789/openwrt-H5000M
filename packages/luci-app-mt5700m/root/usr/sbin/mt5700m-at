@@ -109,6 +109,32 @@ detect_qmodem_at_port() {
 	done
 }
 
+detect_qmodem_section() {
+	local section first value
+
+	command -v uci >/dev/null 2>&1 || return 1
+
+	for section in $(uci -q show qmodem 2>/dev/null | sed -n "s/^qmodem\.\([^.=]*\)=modem-device$/\1/p;s/^qmodem\.\([^.=]*\)='modem-device'$/\1/p"); do
+		[ -n "${first}" ] || first="${section}"
+		for value in \
+			"$(uci -q get qmodem.${section}.at_port)" \
+			"$(uci -q get qmodem.${section}.name)" \
+			"$(uci -q get qmodem.${section}.manufacturer)" \
+			"$(uci -q get qmodem.${section}.platform)" \
+			"$(uci -q get qmodem.${section}.path)"; do
+			case "${value}" in
+				"${at_port}"|*/ttyUSB1|*[Mm][Tt]5700*|*[Hh]uawei*|*[Hh]isilicon*|*/2-1/*)
+					printf '%s\n' "${section}"
+					return 0
+					;;
+			esac
+		done
+	done
+
+	[ -n "${first}" ] || return 1
+	printf '%s\n' "${first}"
+}
+
 at_network_cmd() {
 	local command="$1"
 	local target_host="${2:-${host}}"
@@ -120,6 +146,34 @@ at_network_cmd() {
 
 	echo "nc command not found" >&2
 	return 127
+}
+
+at_ubus_cmd() {
+	local command="$1"
+	local device="$2"
+	local payload result status response
+
+	command -v ubus >/dev/null 2>&1 || return 127
+	command -v jsonfilter >/dev/null 2>&1 || return 127
+	[ -r /usr/share/libubox/jshn.sh ] || return 127
+	ubus list at-daemon >/dev/null 2>&1 || return 127
+
+	# at-daemon owns the serial descriptor and serializes access shared with
+	# QModem. Its default end flags cover OK and standard AT errors.
+	. /usr/share/libubox/jshn.sh
+	json_init
+	json_add_string at_port "${device}"
+	json_add_int timeout "${timeout_s}"
+	json_add_string at_cmd "${command}"
+	payload="$(json_dump)"
+
+	result="$(ubus call at-daemon sendat "${payload}" 2>/dev/null)" || return 1
+	status="$(printf '%s' "${result}" | jsonfilter -e '@.status' 2>/dev/null)"
+	[ "${status}" = "success" ] || return 1
+
+	response="$(printf '%s' "${result}" | jsonfilter -e '@.response' 2>/dev/null)"
+	[ -n "${response}" ] && printf '%s\n' "${response}"
+	return 0
 }
 
 at_serial_cmd() {
@@ -161,12 +215,14 @@ at_serial_cmd() {
 	rm -f "${tmp}"
 
 	[ -n "${output}" ] && printf '%s\n' "${output}"
-	return 1
+	# A serial timeout is a transport failure, not a modem ERROR response.
+	# Let auto mode try the network AT endpoint in this case.
+	return 124
 }
 
 at_cmd() {
 	local command="$1"
-	local device target
+	local device target serial_output serial_rc ubus_rc
 
 	[ "${enabled}" = "1" ] || return 2
 	command="$(printf '%s' "${command}" | tr -d '\000\r\n')"
@@ -179,6 +235,12 @@ at_cmd() {
 				echo "AT serial port not found" >&2
 				return 1
 			}
+			at_ubus_cmd "${command}" "${device}"
+			ubus_rc=$?
+			[ "${ubus_rc}" -eq 0 ] && return 0
+			# A live at-daemon owns the descriptor. Do not bypass its lock when
+			# a queued request times out or the modem rejects the command.
+			[ "${ubus_rc}" -ne 127 ] && return "${ubus_rc}"
 			at_serial_cmd "${command}" "${device}"
 			return $?
 			;;
@@ -191,8 +253,16 @@ at_cmd() {
 		auto)
 			device="$(detect_qmodem_at_port)"
 			if [ -n "${device}" ]; then
-				at_serial_cmd "${command}" "${device}"
-				return $?
+				at_ubus_cmd "${command}" "${device}"
+				ubus_rc=$?
+				[ "${ubus_rc}" -eq 0 ] && return 0
+				[ "${ubus_rc}" -ne 127 ] && return "${ubus_rc}"
+				serial_output="$(at_serial_cmd "${command}" "${device}")"
+				serial_rc=$?
+				if [ "${serial_rc}" -eq 0 ]; then
+					[ -n "${serial_output}" ] && printf '%s\n' "${serial_output}"
+					return 0
+				fi
 			fi
 
 			for target in $(network_hosts); do
@@ -207,12 +277,41 @@ at_cmd() {
 at_sms_send() {
 	local number="$1"
 	local text="$2"
-	local device
+	local device section params payload result status
 
 	[ "${enabled}" = "1" ] || return 2
 	number="$(printf '%s' "${number}" | tr -cd '0-9+')"
 	text="$(printf '%s' "${text}" | tr -d '\000')"
 	[ -n "${number}" ] && [ -n "${text}" ] || return 1
+
+	# QModem's SMS method uses the same serialized AT transport as its dialer.
+	# Once the request is accepted, never retry through the raw serial path: a
+	# retry could send the same message twice when only the response was lost.
+	if command -v ubus >/dev/null 2>&1 && command -v jsonfilter >/dev/null 2>&1 && \
+		[ -r /usr/share/libubox/jshn.sh ] && ubus list qmodem >/dev/null 2>&1; then
+		section="$(detect_qmodem_section || true)"
+		if [ -n "${section}" ]; then
+			. /usr/share/libubox/jshn.sh
+			json_init
+			json_add_string phone_number "${number}"
+			json_add_string message_content "${text}"
+			params="$(json_dump)"
+			json_init
+			json_add_string config_section "${section}"
+			json_add_string params "${params}"
+			payload="$(json_dump)"
+
+			result="$(ubus call qmodem send_sms "${payload}" 2>/dev/null)" || return 1
+			status="$(printf '%s' "${result}" | jsonfilter -e '@.result.status' 2>/dev/null)"
+			[ -n "${status}" ] || status="$(printf '%s' "${result}" | jsonfilter -e '@.status' 2>/dev/null)"
+			[ "${status}" = "1" ] || {
+				echo "QModem failed to send the message" >&2
+				return 1
+			}
+			printf '%s\n' "${result}"
+			return 0
+		fi
+	fi
 
 	case "${mode}" in
 		serial|auto)
@@ -362,6 +461,10 @@ clean_csv() {
 	printf '%s' "$1" | tr -d ' ' | sed 's/^,*//;s/,*$//;s/,,*/,/g'
 }
 
+valid_numeric_csv() {
+	[ -n "$1" ] && printf '%s' "$1" | grep -Eq '^[0-9]+(,[0-9]+)*$'
+}
+
 build_lte_lock_command() {
 	local lock_type bands arfcns pcis count
 
@@ -376,30 +479,21 @@ build_lte_lock_command() {
 			;;
 		3)
 			count="$(csv_count "${bands}")"
-			[ "${count}" -gt 0 ] || {
-				printf '%s\n' 'AT^LTEFREQLOCK=0'
-				return
-			}
+			valid_numeric_csv "${bands}" || return 64
 			printf 'AT^LTEFREQLOCK=3,0,%s,"%s"\n' "${count}" "${bands}"
 			;;
 		1)
 			count="$(csv_count "${bands}")"
-			[ "${count}" -gt 0 ] && [ "${count}" = "$(csv_count "${arfcns}")" ] || {
-				printf '%s\n' 'AT^LTEFREQLOCK=0'
-				return
-			}
+			valid_numeric_csv "${bands}" && valid_numeric_csv "${arfcns}" && [ "${count}" = "$(csv_count "${arfcns}")" ] || return 64
 			printf 'AT^LTEFREQLOCK=1,0,%s,"%s","%s"\n' "${count}" "${bands}" "${arfcns}"
 			;;
 		2)
 			count="$(csv_count "${bands}")"
-			[ "${count}" -gt 0 ] && [ "${count}" = "$(csv_count "${arfcns}")" ] && [ "${count}" = "$(csv_count "${pcis}")" ] || {
-				printf '%s\n' 'AT^LTEFREQLOCK=0'
-				return
-			}
+			valid_numeric_csv "${bands}" && valid_numeric_csv "${arfcns}" && valid_numeric_csv "${pcis}" && [ "${count}" = "$(csv_count "${arfcns}")" ] && [ "${count}" = "$(csv_count "${pcis}")" ] || return 64
 			printf 'AT^LTEFREQLOCK=2,0,%s,"%s","%s","%s"\n' "${count}" "${bands}" "${arfcns}" "${pcis}"
 			;;
 		*)
-			printf '%s\n' 'AT^LTEFREQLOCK=0'
+			return 64
 			;;
 	esac
 }
@@ -419,30 +513,21 @@ build_nr_lock_command() {
 			;;
 		3)
 			count="$(csv_count "${bands}")"
-			[ "${count}" -gt 0 ] || {
-				printf '%s\n' 'AT^NRFREQLOCK=0'
-				return
-			}
+			valid_numeric_csv "${bands}" || return 64
 			printf 'AT^NRFREQLOCK=3,0,%s,"%s"\n' "${count}" "${bands}"
 			;;
 		1)
 			count="$(csv_count "${bands}")"
-			[ "${count}" -gt 0 ] && [ "${count}" = "$(csv_count "${arfcns}")" ] && [ "${count}" = "$(csv_count "${scs}")" ] || {
-				printf '%s\n' 'AT^NRFREQLOCK=0'
-				return
-			}
+			valid_numeric_csv "${bands}" && valid_numeric_csv "${arfcns}" && valid_numeric_csv "${scs}" && [ "${count}" = "$(csv_count "${arfcns}")" ] && [ "${count}" = "$(csv_count "${scs}")" ] || return 64
 			printf 'AT^NRFREQLOCK=1,0,%s,"%s","%s","%s"\n' "${count}" "${bands}" "${arfcns}" "${scs}"
 			;;
 		2)
 			count="$(csv_count "${bands}")"
-			[ "${count}" -gt 0 ] && [ "${count}" = "$(csv_count "${arfcns}")" ] && [ "${count}" = "$(csv_count "${scs}")" ] && [ "${count}" = "$(csv_count "${pcis}")" ] || {
-				printf '%s\n' 'AT^NRFREQLOCK=0'
-				return
-			}
+			valid_numeric_csv "${bands}" && valid_numeric_csv "${arfcns}" && valid_numeric_csv "${scs}" && valid_numeric_csv "${pcis}" && [ "${count}" = "$(csv_count "${arfcns}")" ] && [ "${count}" = "$(csv_count "${scs}")" ] && [ "${count}" = "$(csv_count "${pcis}")" ] || return 64
 			printf 'AT^NRFREQLOCK=2,0,%s,"%s","%s","%s","%s"\n' "${count}" "${bands}" "${arfcns}" "${scs}" "${pcis}"
 			;;
 		*)
-			printf '%s\n' 'AT^NRFREQLOCK=0'
+			return 64
 			;;
 	esac
 }
@@ -566,8 +651,10 @@ print_sms_list() {
 	at_cmd 'AT+CPMS?' || true
 	echo
 	echo "===== SMS messages ====="
-	at_cmd 'AT+CMGF=1' >/dev/null 2>&1 || true
-	at_cmd 'AT+CMGL="ALL"' || true
+	# MT5700M text mode omits the message body for stored UCS2 messages.
+	# PDU mode preserves the complete payload for decoding in LuCI.
+	at_cmd 'AT+CMGF=0' >/dev/null 2>&1 || true
+	at_cmd 'AT+CMGL=4' || true
 }
 
 print_system_info() {
@@ -593,8 +680,61 @@ print_system_info() {
 	done
 }
 
+print_advanced_info() {
+	local label command raw
+
+	for item in \
+		"Auto dial|AT^SETAUTODIAL?" \
+		"Direct IP|AT^SETDIRECTIP?" \
+		"USB mode|AT^SETMODE?" \
+		"Interface mode|AT^TDCFG?" \
+		"PDP contexts|AT+CGDCONT?" \
+		"Radio mode|AT^SYSCFGEX?" \
+		"NIC speed|AT^TDPCIELANCFG?" \
+		"Performance mode|AT^TDPMCFG?" \
+		"SIM hotplug|AT^TDSIMHP?" \
+		"SIM slot|AT^SCICHG?" \
+		"Thermal control|AT^THERMAUTOFUN?" \
+		"NR carrier aggregation|AT^NRRCCAPQRY=3" \
+		"VoNR|AT^NRRCCAPQRY=2" \
+		"DSS|AT^NRRCCAPQRY=5"
+	do
+		label="${item%%|*}"
+		command="${item#*|}"
+		echo "===== ${label}: ${command} ====="
+		raw="$(at_cmd "${command}" || true)"
+		printf '%s\n\n' "${raw}"
+	done
+}
+
+print_sms_info() {
+	local label command raw
+
+	for item in \
+		"IMS|AT^IMSSWITCH?" \
+		"SMSC|AT+CSCA?" \
+		"Storage|AT+CPMS?"
+	do
+		label="${item%%|*}"
+		command="${item#*|}"
+		echo "===== ${label}: ${command} ====="
+		raw="$(at_cmd "${command}" || true)"
+		printf '%s\n\n' "${raw}"
+	done
+}
+
+safe_at_field() {
+	case "$1" in
+		*'"'*|*','*|*'\r'*|*'\n'*) return 1 ;;
+	esac
+	return 0
+}
+
 case "${1:-status}" in
 	status)
+		# Keep LuCI status below rpcd's execution timeout even if an optional
+		# modem query does not return a final result promptly.
+		[ "${timeout_s}" -le 2 ] || timeout_s=2
 		echo "enabled=${enabled}"
 		echo "mode=${mode}"
 		detected_at_port="$(detect_qmodem_at_port || true)"
@@ -634,6 +774,9 @@ case "${1:-status}" in
 	sms-list)
 		print_sms_list
 		;;
+	sms-info)
+		print_sms_info
+		;;
 	sms-send)
 		shift
 		at_sms_send "${1:-}" "${2:-}"
@@ -644,8 +787,118 @@ case "${1:-status}" in
 		[ -n "${index}" ] || exit 1
 		at_cmd "AT+CMGD=${index}"
 		;;
+	sms-clear)
+		at_cmd 'AT+CMGF=0' >/dev/null || exit 1
+		at_cmd 'AT+CMGD=1,4'
+		;;
+	sms-set)
+		shift
+		case "${1:-}" in
+			smsc)
+				shift
+				smsc="$(printf '%s' "${1:-}" | tr -cd '0-9+')"
+				[ -n "${smsc}" ] || exit 64
+				at_cmd "AT+CSCA=\"${smsc}\""
+				;;
+			storage)
+				shift
+				case "${1:-}" in SM|ME) store="${1}" ;; *) exit 64 ;; esac
+				at_cmd "AT+CPMS=\"${store}\",\"${store}\",\"${store}\""
+				;;
+			*) exit 64 ;;
+		esac
+		;;
 	system)
 		print_system_info
+		;;
+	advanced)
+		print_advanced_info
+		;;
+	advanced-set)
+		shift
+		case "${1:-}" in
+			autodial)
+				shift
+				enable="${1:-}"
+				dial_mode="${2:-}"
+				protocol="${3:-}"
+				apn="${4:-}"
+				username="${5:-}"
+				password="${6:-}"
+				auth_type="${7:-}"
+				case "${enable}" in 0|1) ;; *) exit 64 ;; esac
+				case "${dial_mode}" in 1|2) ;; *) exit 64 ;; esac
+				case "${protocol}" in IP|IPV6|IPV4V6) ;; *) exit 64 ;; esac
+				case "${auth_type}" in 0|1|2) ;; *) exit 64 ;; esac
+				safe_at_field "${apn}" && safe_at_field "${username}" && safe_at_field "${password}" || exit 64
+				at_cmd "AT^SETAUTODIAL=${enable},${dial_mode},\"${protocol}\",\"${apn}\",\"${username}\",\"${password}\",${auth_type}"
+				;;
+			direct-ip)
+				shift
+				case "${1:-}" in 0|1) at_cmd "AT^SETDIRECTIP=${1}" ;; *) exit 64 ;; esac
+				;;
+			nic-speed)
+				shift
+				case "${1:-}" in 1|2) at_cmd "AT^TDPCIELANCFG=${1}" ;; *) exit 64 ;; esac
+				;;
+			usb-mode)
+				shift
+				case "${1:-}" in 0|1|2|3|4|5|6|7|8) at_cmd "AT^SETMODE=${1}" ;; *) exit 64 ;; esac
+				;;
+			interface-mode)
+				shift
+				case "${1:-}" in 1|2|3) at_cmd "AT^TDCFG=\"infcfg\",\"mode\",${1}" ;; *) exit 64 ;; esac
+				;;
+			postroute)
+				shift
+				case "${1:-}" in
+					0) at_cmd 'AT^TDCFG="infcfg","PostRoute",0' ;;
+					1) at_cmd 'AT^IPFILTERSWITCH=0' >/dev/null || exit 1; at_cmd 'AT^TDCFG="infcfg","PostRoute",1' ;;
+					*) exit 64 ;;
+				esac
+				;;
+			dmz)
+				shift
+				dmz="${1:-}"
+				case "${dmz}" in
+					0) at_cmd 'AT^TDCFG="infcfg","dmz","0"' ;;
+					192.168.8.*) printf '%s' "${dmz}" | grep -Eq '^192\.168\.8\.([1-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-4])$' || exit 64; at_cmd "AT^TDCFG=\"infcfg\",\"dmz\",\"${dmz}\"" ;;
+					*) exit 64 ;;
+				esac
+				;;
+			performance)
+				shift
+				case "${1:-}" in 0|1) at_cmd "AT^TDPMCFG=${1},0,0,0" ;; *) exit 64 ;; esac
+				;;
+			sim-hotplug)
+				shift
+				case "${1:-}" in 0|1) at_cmd "AT^TDSIMHP=${1}" ;; *) exit 64 ;; esac
+				;;
+			thermal)
+				shift
+				case "${1:-}" in 0|1) thermal_enabled="${1}" ;; *) exit 64 ;; esac
+				case "${2:-}" in 0|1) thermal_mimo="${2}" ;; *) exit 64 ;; esac
+				case "${3:-}" in 1|2|3|4|5|10|15|30|60) thermal_interval="${3}" ;; *) exit 64 ;; esac
+				at_cmd "AT^THERMAUTOFUN=${thermal_enabled},${thermal_mimo},${thermal_interval}"
+				;;
+			carrier-aggregation)
+				shift
+				case "${1:-}" in 0|1) at_cmd "AT^NRRCCAPCFG=3,${1}" ;; *) exit 64 ;; esac
+				;;
+			vonr)
+				shift
+				case "${1:-}" in 0|1|2|3) at_cmd "AT^NRRCCAPCFG=2,${1}" ;; *) exit 64 ;; esac
+				;;
+			dss)
+				shift
+				case "${1:-}" in 0|1) dss_rate="${1}" ;; *) exit 64 ;; esac
+				case "${2:-}" in 0|1) dss_dmrs="${2}" ;; *) exit 64 ;; esac
+				at_cmd "AT^NRRCCAPCFG=5,${dss_rate},${dss_dmrs}"
+				;;
+			*)
+				exit 64
+				;;
+		esac
 		;;
 	fota-init)
 		at_cmd 'AT^FOTAMODE=0,1,0,1'
@@ -662,6 +915,16 @@ case "${1:-status}" in
 		[ -n "${url}" ] || exit 1
 		at_cmd "AT^FOTAOEMDL=\"${url}\""
 		;;
+	fota-start)
+		shift
+		url="$(printf '%s' "${1:-}" | tr -d '\000\r\n"')"
+		case "${url}" in http://*) ;; *) exit 64 ;; esac
+		case "${url}" in *,*) exit 64 ;; esac
+		case "${url}" in */) ;; *) url="${url}/" ;; esac
+		at_cmd 'ATE0' >/dev/null || exit 1
+		at_cmd 'AT^FOTAMODE=0,1,0,1' >/dev/null || exit 1
+		at_cmd "AT^FOTAOEMDL=\"${url}\""
+		;;
 	fota-resume)
 		at_cmd 'AT^FOTADL=1'
 		;;
@@ -673,11 +936,11 @@ case "${1:-status}" in
 		case "${1:-}" in
 			lte)
 				shift
-				build_lte_lock_command "$@"
+				build_lte_lock_command "$@" || exit 64
 				;;
 			nr)
 				shift
-				build_nr_lock_command "$@"
+				build_nr_lock_command "$@" || exit 64
 				;;
 			*)
 				echo "Usage: $0 preview-lock {lte|nr} <type> <bands> [arfcns] [scs] [pcis]" >&2
@@ -686,21 +949,24 @@ case "${1:-status}" in
 		esac
 		;;
 	lock)
+		lock_cmd=''
 		shift
 		case "${1:-}" in
 			lte)
 				shift
-				at_cmd "$(build_lte_lock_command "$@")"
+				lock_cmd="$(build_lte_lock_command "$@")" || exit 64
 				;;
 			nr)
 				shift
-				at_cmd "$(build_nr_lock_command "$@")"
+				lock_cmd="$(build_nr_lock_command "$@")" || exit 64
 				;;
 			*)
 				echo "Usage: $0 lock {lte|nr} <type> <bands> [arfcns] [scs] [pcis]" >&2
 				exit 1
 				;;
 		esac
+		[ -n "${lock_cmd}" ] || exit 64
+		at_cmd "${lock_cmd}"
 		;;
 	restart)
 		at_cmd 'AT+CFUN=1,1'

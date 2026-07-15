@@ -1,132 +1,239 @@
 #!/bin/sh
 
+TAG="h5000m-netmode"
+LOCK_DIR="/var/lock/h5000m-netmode.lock"
+
 mode="$(uci -q get h5000m_netmode.settings.mode || echo wan_first)"
 
-print_status() {
-	local wan_metric wan6_metric usb_metric usbv6_metric qmodem_metric
-	local wan_defaultroute wan6_defaultroute usb_defaultroute usbv6_defaultroute
-	local default4 default6 active4 active6
-	local wan_device wan6_device usb_device usbv6_device
-
-	wan_metric="$(uci -q get network.wan.metric || echo "")"
-	wan6_metric="$(uci -q get network.wan6.metric || echo "")"
-	usb_metric="$(uci -q get network.USB.metric || echo "")"
-	usbv6_metric="$(uci -q get network.USBv6.metric || echo "")"
-	wan_defaultroute="$(uci -q get network.wan.defaultroute || echo 1)"
-	wan6_defaultroute="$(uci -q get network.wan6.defaultroute || echo 1)"
-	usb_defaultroute="$(uci -q get network.USB.defaultroute || echo 1)"
-	usbv6_defaultroute="$(uci -q get network.USBv6.defaultroute || echo 1)"
-	qmodem_metric=''
-	for modem in $(uci -q show qmodem | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
-		qmodem_metric="$(uci -q get "${modem}.metric" || echo "")"
-		[ -n "${qmodem_metric}" ] && break
-	done
-	wan_device="$(uci -q get network.wan.device || uci -q get network.wan.ifname || echo wan)"
-	wan6_device="$(uci -q get network.wan6.device || uci -q get network.wan6.ifname || echo wan6)"
-	usb_device="$(uci -q get network.USB.device || uci -q get network.USB.ifname || echo USB)"
-	usbv6_device="$(uci -q get network.USBv6.device || uci -q get network.USBv6.ifname || echo USBv6)"
-	default4="$(ip route show default 2>/dev/null | head -n 1)"
-	default6="$(ip -6 route show default 2>/dev/null | head -n 1)"
-
-	case "${default4}" in
-		*" dev ${wan_device} "*|*' dev wan '*)
-			active4='wan'
-			;;
-		*" dev ${usb_device} "*|*' dev USB '*)
-			active4='USB'
-			;;
-		*)
-			active4=''
-			;;
+normalize_mode() {
+	case "$mode" in
+		wan_first|modem_first|wan_only|modem_only) ;;
+		*) mode="wan_first" ;;
 	esac
-
-	case "${default6}" in
-		*" dev ${wan6_device} "*|*' dev wan6 '*|*" dev ${wan_device} "*)
-			active6='wan6'
-			;;
-		*" dev ${usbv6_device} "*|*' dev USBv6 '*|*" dev ${usb_device} "*)
-			active6='USBv6'
-			;;
-		*)
-			active6=''
-			;;
-	esac
-
-	echo "mode=${mode}"
-	echo "wan_metric=${wan_metric}"
-	echo "wan6_metric=${wan6_metric}"
-	echo "usb_metric=${usb_metric}"
-	echo "usbv6_metric=${usbv6_metric}"
-	echo "wan_defaultroute=${wan_defaultroute}"
-	echo "wan6_defaultroute=${wan6_defaultroute}"
-	echo "usb_defaultroute=${usb_defaultroute}"
-	echo "usbv6_defaultroute=${usbv6_defaultroute}"
-	echo "qmodem_metric=${qmodem_metric}"
-	echo "active4=${active4}"
-	echo "active6=${active6}"
-	echo "default4=${default4}"
-	echo "default6=${default6}"
 }
 
-if [ "${1:-}" = "status" ]; then
-	print_status
-	exit 0
-fi
+bool_value() {
+	case "$1" in
+		1|true) echo 1 ;;
+		*) echo 0 ;;
+	esac
+}
 
-case "${mode}" in
-	modem_first)
-		wan_metric='50'
-		modem_metric='10'
-		wan_defaultroute='1'
-		modem_defaultroute='1'
-		usbv6_defaultroute='1'
+interface_exists() {
+	uci -q get "network.$1" >/dev/null 2>&1
+}
+
+read_interface() {
+	local name="$1" json value
+
+	IFACE_PRESENT=0
+	IFACE_UP=0
+	IFACE_AVAILABLE=0
+	IFACE_DEVICE=""
+	interface_exists "$name" && IFACE_PRESENT=1
+
+	json="$(ubus call "network.interface.$name" status 2>/dev/null || true)"
+	[ -n "$json" ] || {
+		IFACE_DEVICE="$(uci -q get "network.$name.device" || uci -q get "network.$name.ifname" || true)"
+		return 0
+	}
+
+	value="$(printf '%s' "$json" | jsonfilter -e '@.up' 2>/dev/null || true)"
+	IFACE_UP="$(bool_value "$value")"
+	value="$(printf '%s' "$json" | jsonfilter -e '@.available' 2>/dev/null || true)"
+	IFACE_AVAILABLE="$(bool_value "$value")"
+	IFACE_DEVICE="$(printf '%s' "$json" | jsonfilter -e '@.l3_device' 2>/dev/null || true)"
+	[ -n "$IFACE_DEVICE" ] || IFACE_DEVICE="$(printf '%s' "$json" | jsonfilter -e '@.device' 2>/dev/null || true)"
+	[ -n "$IFACE_DEVICE" ] || IFACE_DEVICE="$(uci -q get "network.$name.device" || uci -q get "network.$name.ifname" || true)"
+}
+
+route_device() {
+	printf '%s\n' "$1" | sed -n 's/.* dev \([^ ]*\).*/\1/p'
+}
+
+device_matches() {
+	local device="$1" candidate
+	shift
+	for candidate in "$@"; do
+		[ -n "$candidate" ] && [ "$device" = "$candidate" ] && return 0
+	done
+	return 1
+}
+
+route_owner() {
+	local device="$1"
+	shift
+	[ -n "$device" ] || { echo none; return 0; }
+	if device_matches "$device" "$WAN_DEVICE" "$WAN6_DEVICE"; then
+		echo wan
+	elif device_matches "$device" "$MODEM_DEVICE" "$MODEM6_DEVICE"; then
+		echo modem
+	else
+		echo other
+	fi
+}
+
+read_live_state() {
+	read_interface wan
+	WAN_PRESENT="$IFACE_PRESENT"; WAN_UP="$IFACE_UP"; WAN_AVAILABLE="$IFACE_AVAILABLE"; WAN_DEVICE="$IFACE_DEVICE"
+	read_interface wan6
+	WAN6_PRESENT="$IFACE_PRESENT"; WAN6_UP="$IFACE_UP"; WAN6_AVAILABLE="$IFACE_AVAILABLE"; WAN6_DEVICE="$IFACE_DEVICE"
+	read_interface USB
+	MODEM_PRESENT="$IFACE_PRESENT"; MODEM_UP="$IFACE_UP"; MODEM_AVAILABLE="$IFACE_AVAILABLE"; MODEM_DEVICE="$IFACE_DEVICE"
+	read_interface USBv6
+	MODEM6_PRESENT="$IFACE_PRESENT"; MODEM6_UP="$IFACE_UP"; MODEM6_AVAILABLE="$IFACE_AVAILABLE"; MODEM6_DEVICE="$IFACE_DEVICE"
+
+	DEFAULT4="$(ip -4 route show default 2>/dev/null | head -n 1)"
+	DEFAULT6="$(ip -6 route show default 2>/dev/null | head -n 1)"
+	ACTIVE4="$(route_owner "$(route_device "$DEFAULT4")")"
+	ACTIVE6="$(route_owner "$(route_device "$DEFAULT6")")"
+}
+
+print_status() {
+	local qmodem_metric modem
+
+	read_live_state
+	qmodem_metric=""
+	for modem in $(uci -q show qmodem | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
+		qmodem_metric="$(uci -q get "${modem}.metric" || true)"
+		[ -n "$qmodem_metric" ] && break
+	done
+
+	echo "mode=$mode"
+	echo "wan_present=$WAN_PRESENT"
+	echo "wan_up=$WAN_UP"
+	echo "wan6_up=$WAN6_UP"
+	echo "wan_device=$WAN_DEVICE"
+	echo "modem_present=$MODEM_PRESENT"
+	echo "modem_up=$MODEM_UP"
+	echo "modem6_up=$MODEM6_UP"
+	echo "modem_device=$MODEM_DEVICE"
+	echo "active4=$ACTIVE4"
+	echo "active6=$ACTIVE6"
+	echo "wan_metric=$(uci -q get network.wan.metric || true)"
+	echo "wan6_metric=$(uci -q get network.wan6.metric || true)"
+	echo "usb_metric=$(uci -q get network.USB.metric || true)"
+	echo "usbv6_metric=$(uci -q get network.USBv6.metric || true)"
+	echo "wan_defaultroute=$(uci -q get network.wan.defaultroute || echo 1)"
+	echo "wan6_defaultroute=$(uci -q get network.wan6.defaultroute || echo 1)"
+	echo "usb_defaultroute=$(uci -q get network.USB.defaultroute || echo 1)"
+	echo "usbv6_defaultroute=$(uci -q get network.USBv6.defaultroute || echo 1)"
+	echo "qmodem_metric=$qmodem_metric"
+	echo "default4=$DEFAULT4"
+	echo "default6=$DEFAULT6"
+}
+
+set_network_option() {
+	local section="$1" option="$2" value="$3"
+	interface_exists "$section" || return 0
+	uci -q set "network.${section}.${option}=${value}"
+}
+
+acquire_lock() {
+	local owner
+	if mkdir "$LOCK_DIR" 2>/dev/null; then
+		echo "$$" > "$LOCK_DIR/pid"
+		return 0
+	fi
+	owner="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+	case "$owner" in
+		''|*[!0-9]*) owner="" ;;
+	esac
+	if [ -z "$owner" ] || ! kill -0 "$owner" 2>/dev/null; then
+		rm -rf "$LOCK_DIR" 2>/dev/null
+		mkdir "$LOCK_DIR" 2>/dev/null || return 1
+		echo "$$" > "$LOCK_DIR/pid"
+		return 0
+	fi
+	return 1
+}
+
+release_lock() {
+	rm -rf "$LOCK_DIR" 2>/dev/null
+}
+
+apply_policy() {
+	local wan_metric modem_metric wan_defaultroute modem_defaultroute modem
+
+	case "$mode" in
+		modem_first)
+			wan_metric=50; modem_metric=10
+			wan_defaultroute=1; modem_defaultroute=1
+			;;
+		wan_only)
+			wan_metric=10; modem_metric=50
+			wan_defaultroute=1; modem_defaultroute=0
+			;;
+		modem_only)
+			wan_metric=50; modem_metric=10
+			wan_defaultroute=0; modem_defaultroute=1
+			;;
+		*)
+			mode=wan_first
+			wan_metric=10; modem_metric=50
+			wan_defaultroute=1; modem_defaultroute=1
+			;;
+	esac
+
+	uci -q set h5000m_netmode.settings='settings' || return 1
+	uci -q set "h5000m_netmode.settings.mode=${mode}" || return 1
+	uci -q commit h5000m_netmode || return 1
+
+	set_network_option wan metric "$wan_metric" || return 1
+	set_network_option wan6 metric "$wan_metric" || return 1
+	set_network_option USB metric "$modem_metric" || return 1
+	set_network_option USBv6 metric "$modem_metric" || return 1
+	set_network_option wan defaultroute "$wan_defaultroute" || return 1
+	set_network_option wan6 defaultroute "$wan_defaultroute" || return 1
+	set_network_option USB defaultroute "$modem_defaultroute" || return 1
+	set_network_option USBv6 defaultroute "$modem_defaultroute" || return 1
+	uci -q commit network || return 1
+
+	for modem in $(uci -q show qmodem | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
+		uci -q set "${modem}.metric=${modem_metric}" || return 1
+	done
+	if uci -q show qmodem >/dev/null 2>&1; then
+		uci -q commit qmodem || return 1
+	fi
+	return 0
+}
+
+normalize_mode
+action="${1:-}"
+case "$action" in
+	status)
+		print_status
+		exit 0
 		;;
-	wan_only)
-		wan_metric='10'
-		modem_metric='50'
-		wan_defaultroute='1'
-		modem_defaultroute='0'
-		usbv6_defaultroute='0'
+	set)
+		case "${2:-}" in
+			wan_first|modem_first|wan_only|modem_only) mode="$2" ;;
+			*) echo "invalid exit policy" >&2; exit 64 ;;
+		esac
 		;;
-	modem_only)
-		wan_metric='50'
-		modem_metric='10'
-		wan_defaultroute='0'
-		modem_defaultroute='1'
-		usbv6_defaultroute='1'
-		;;
-	*)
-		mode='wan_first'
-		wan_metric='10'
-		modem_metric='50'
-		wan_defaultroute='1'
-		modem_defaultroute='1'
-		usbv6_defaultroute='1'
-		;;
+	apply|'') ;;
+	*) echo "Usage: $0 {status|apply|set MODE}" >&2; exit 64 ;;
 esac
 
-uci -q set h5000m_netmode.settings='settings'
-uci -q set h5000m_netmode.settings.mode="${mode}"
-uci -q commit h5000m_netmode
+if ! acquire_lock; then
+	echo "another exit policy update is already running" >&2
+	exit 2
+fi
+trap release_lock EXIT INT TERM
 
-uci -q set network.wan.metric="${wan_metric}"
-uci -q set network.wan6.metric="${wan_metric}"
-uci -q set network.USB.metric="${modem_metric}"
-uci -q set network.USBv6.metric="${modem_metric}"
-uci -q set network.wan.defaultroute="${wan_defaultroute}"
-uci -q set network.wan6.defaultroute="${wan_defaultroute}"
-uci -q set network.USB.defaultroute="${modem_defaultroute}"
-uci -q set network.USBv6.defaultroute="${usbv6_defaultroute}"
-uci -q commit network
+if ! apply_policy; then
+	logger -t "$TAG" "failed to persist exit policy mode=$mode"
+	echo "failed to persist exit policy" >&2
+	exit 1
+fi
 
-for modem in $(uci -q show qmodem | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
-	uci -q set "${modem}.metric=${modem_metric}"
-done
-uci -q commit qmodem
-
-if [ "${1:-}" = "apply" ]; then
-	/etc/init.d/network reload >/dev/null 2>&1 || true
-	/etc/init.d/qmodem restart >/dev/null 2>&1 || true
+if [ "$action" = "apply" ] || [ "$action" = "set" ]; then
+	if ! /etc/init.d/network reload >/dev/null 2>&1; then
+		logger -t "$TAG" "network reload failed after applying mode=$mode"
+		echo "network reload failed" >&2
+		exit 1
+	fi
+	logger -t "$TAG" "applied exit policy mode=$mode"
 fi
 
 exit 0

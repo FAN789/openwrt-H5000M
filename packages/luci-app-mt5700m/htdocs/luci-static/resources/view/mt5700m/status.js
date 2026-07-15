@@ -1,17 +1,67 @@
 'use strict';
 'require view';
 'require fs';
+'require rpc';
+'require uci';
 'require ui';
+
+var callBaseInfo = rpc.declare({ object: 'qmodem', method: 'base_info', params: [ 'config_section' ], expect: { } });
+var callCellInfo = rpc.declare({ object: 'qmodem', method: 'cell_info', params: [ 'config_section' ], expect: { } });
+var callDialStatus = rpc.declare({ object: 'qmodem', method: 'dial_status', params: [ 'config_section' ], expect: { } });
 
 return view.extend({
 	load: function() {
-		return fs.exec('/usr/sbin/mt5700m-at', [ 'status' ]).catch(function(err) {
-			return { stdout: '', stderr: err.message || String(err) };
+		return uci.load('qmodem').then(function() {
+			var sections = uci.sections('qmodem', 'modem-device');
+			var modem = sections.find(function(section) {
+				var identity = [ section.name, section.alias, section.manufacturer, section.platform ].join(' ').toLowerCase();
+				return /mt5700|huawei|hisilicon/.test(identity) || section.at_port === '/dev/ttyUSB1';
+			}) || sections[0];
+
+			if (!modem)
+				throw new Error(_('No QModem modem was found.'));
+
+			return Promise.all([
+				callBaseInfo(modem['.name']),
+				callCellInfo(modem['.name']),
+				callDialStatus(modem['.name'])
+			]).then(function(results) {
+				return { qmodem: true, modem: modem, base: results[0], cell: results[1], dial: results[2] };
+			});
+		}).catch(function(err) {
+			return fs.exec('/usr/sbin/mt5700m-at', [ 'status' ]).catch(function(fallbackErr) {
+				return { stdout: '', stderr: fallbackErr.message || err.message || String(fallbackErr) };
+			});
 		});
 	},
 
 	parseStatus: function(res) {
 		var data = {};
+		var collect = function(entries) {
+			(entries || []).forEach(function(entry) {
+				if (entry && entry.key != null)
+					data[entry.key] = entry.value;
+			});
+		};
+
+		if (res.qmodem) {
+			collect(res.base && res.base.modem_info);
+			collect(res.cell && res.cell.modem_info);
+			data.model = data.name || res.modem.name || 'MT5700M';
+			data.revision = data.revision || '';
+			data.at_port = data.at_port || res.modem.at_port || '';
+			data.temperature = String(data.temperature || '').replace(/[^0-9.-]/g, '');
+			data.sysmode_detail = data.network_mode || '';
+			data.rsrp = data.RSRP || '';
+			data.rsrq = data.RSRQ || '';
+			data.sinr = data.SINR || '';
+			data.connected = /^(yes|connected|1|true)$/i.test(String(data.connect_status || '')) ? '1' : '0';
+			data.dial_running = String((res.dial || {}).running || '') === 'true' ? '1' : '0';
+			data.network_interface = res.modem.network || res.modem.data_interface || '';
+			data.channel = 'serial';
+			data.backend = 'QModem';
+			return data;
+		}
 
 		(res.stdout || '').trim().split(/\n/).forEach(function(line) {
 			var pos = line.indexOf('=');
@@ -21,103 +71,189 @@ return view.extend({
 		});
 
 		data.error = res.stderr || '';
+		data.backend = _('Direct AT fallback');
 		return data;
 	},
 
 	styleNode: function() {
 		return E('style', {}, [
-			'.mt5700m-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}',
-			'.mt5700m-card{border:1px solid var(--border-color-medium,#d8d8d8);border-radius:8px;padding:12px;background:var(--background-color-high,#fff);min-height:76px}',
-			'.mt5700m-card-title{font-size:12px;color:var(--text-color-medium,#666);margin-bottom:6px}',
-			'.mt5700m-card-value{font-size:20px;line-height:1.25;font-weight:600;color:var(--text-color-high,#222);word-break:break-word}',
-			'.mt5700m-card-hint{font-size:11px;color:var(--text-color-low,#888);margin-top:6px;word-break:break-word}',
-			'.mt5700m-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 18px}',
-			'.mt5700m-raw{white-space:pre-wrap;word-break:break-word;background:#16191d;color:#d7dde5;border-radius:6px;padding:12px;min-height:120px}'
+			'.mt5700m-page{max-width:1120px;margin:0 auto;color:var(--text-color-high,#20242a)}',
+			'.mt5700m-hero{position:relative;overflow:hidden;padding:24px 26px;margin:0 0 18px;border-radius:16px;background:linear-gradient(135deg,#1264d8 0%,#087eae 58%,#07988e 100%);color:#fff;box-shadow:0 10px 30px rgba(14,92,155,.18)}',
+			'.mt5700m-hero:after{content:"";position:absolute;width:220px;height:220px;right:-72px;top:-108px;border:44px solid rgba(255,255,255,.08);border-radius:50%}',
+			'.mt5700m-hero-top{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start;gap:18px}',
+			'.mt5700m-eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.78;margin-bottom:5px}',
+			'.mt5700m-title{font-size:28px;line-height:1.18;font-weight:720;margin:0 0 7px;color:#fff}',
+			'.mt5700m-summary{font-size:14px;line-height:1.5;opacity:.88}',
+			'.mt5700m-status{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:13px;font-weight:650;white-space:nowrap;backdrop-filter:blur(4px)}',
+			'.mt5700m-dot{width:8px;height:8px;border-radius:50%;background:#ffcd57;box-shadow:0 0 0 4px rgba(255,205,87,.18)}',
+			'.mt5700m-status.is-online .mt5700m-dot{background:#78f2b0;box-shadow:0 0 0 4px rgba(120,242,176,.18)}',
+			'.mt5700m-hero-meta{position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:22px;font-size:13px}',
+			'.mt5700m-meta{display:flex;gap:7px;align-items:center}',
+			'.mt5700m-meta-label{opacity:.7}',
+			'.mt5700m-meta-value{font-weight:650}',
+			'.mt5700m-section-title{font-size:16px;font-weight:700;margin:22px 0 11px}',
+			'.mt5700m-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}',
+			'.mt5700m-metric{padding:16px;border:1px solid var(--border-color-medium,#d9dde4);border-radius:13px;background:var(--background-color-high,#fff);box-shadow:0 3px 12px rgba(20,32,50,.04)}',
+			'.mt5700m-metric-label{font-size:12px;color:var(--text-color-medium,#69717d);margin-bottom:8px}',
+			'.mt5700m-metric-line{display:flex;align-items:baseline;gap:5px}',
+			'.mt5700m-metric-value{font-size:23px;line-height:1.15;font-weight:720;letter-spacing:-.02em}',
+			'.mt5700m-metric-unit{font-size:12px;color:var(--text-color-medium,#69717d)}',
+			'.mt5700m-meter{height:4px;margin-top:13px;border-radius:999px;background:var(--border-color-low,#edf0f4);overflow:hidden}',
+			'.mt5700m-meter span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#1e88ff,#05aa91)}',
+			'.mt5700m-content-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,.75fr);gap:14px}',
+			'.mt5700m-panel{border:1px solid var(--border-color-medium,#d9dde4);border-radius:13px;background:var(--background-color-high,#fff);overflow:hidden}',
+			'.mt5700m-panel-head{padding:14px 16px;border-bottom:1px solid var(--border-color-low,#edf0f4);font-size:14px;font-weight:700}',
+			'.mt5700m-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:4px 16px 12px}',
+			'.mt5700m-detail{padding:12px 0;border-bottom:1px solid var(--border-color-low,#edf0f4)}',
+			'.mt5700m-detail:nth-last-child(-n+2){border-bottom:0}',
+			'.mt5700m-detail:nth-child(odd){padding-right:18px}',
+			'.mt5700m-detail-label{font-size:11px;color:var(--text-color-medium,#727a86);margin-bottom:4px}',
+			'.mt5700m-detail-value{font-size:14px;font-weight:600;word-break:break-word}',
+			'.mt5700m-locks{padding:5px 16px 12px}',
+			'.mt5700m-lock{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--border-color-low,#edf0f4)}',
+			'.mt5700m-lock:last-child{border-bottom:0}',
+			'.mt5700m-lock-name{font-size:13px;font-weight:600}',
+			'.mt5700m-lock-state{padding:4px 9px;border-radius:999px;background:#eaf8f3;color:#087b62;font-size:11px;font-weight:700}',
+			'.mt5700m-lock-state.is-locked{background:#fff1df;color:#a45d00}',
+			'.mt5700m-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:16px}',
+			'.mt5700m-actions .btn{border-radius:9px;padding:7px 14px}',
+			'.mt5700m-alert{margin:0 0 14px}',
+			'@media(max-width:760px){.mt5700m-hero{padding:20px}.mt5700m-title{font-size:23px}.mt5700m-hero-top{display:block}.mt5700m-status{margin-top:14px}.mt5700m-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.mt5700m-content-grid{grid-template-columns:1fr}}',
+			'@media(max-width:430px){.mt5700m-metrics{grid-template-columns:1fr}.mt5700m-detail-grid{grid-template-columns:1fr}.mt5700m-detail:nth-child(odd){padding-right:0}.mt5700m-detail:nth-last-child(2){border-bottom:1px solid var(--border-color-low,#edf0f4)}}'
 		].join(''));
 	},
 
-	card: function(title, value, hint) {
-		value = (value === 'null') ? '' : value;
-		hint = (hint === 'null') ? '' : hint;
+	metric: function(label, value, unit, percentage) {
+		var missing = value == null || value === '' || value === 'null';
+		var width = Math.max(0, Math.min(100, Number(percentage) || 0));
 
-		return E('div', { 'class': 'mt5700m-card' }, [
-			E('div', { 'class': 'mt5700m-card-title' }, title),
-			E('div', { 'class': 'mt5700m-card-value' }, value || _('Unknown')),
-			hint ? E('div', { 'class': 'mt5700m-card-hint' }, hint) : null
+		return E('div', { 'class': 'mt5700m-metric' }, [
+			E('div', { 'class': 'mt5700m-metric-label' }, label),
+			E('div', { 'class': 'mt5700m-metric-line' }, [
+				E('span', { 'class': 'mt5700m-metric-value' }, missing ? '--' : String(value)),
+				!missing && unit ? E('span', { 'class': 'mt5700m-metric-unit' }, unit) : null
+			]),
+			E('div', { 'class': 'mt5700m-meter' }, E('span', { 'style': 'width:%d%%'.format(width) }))
 		]);
 	},
 
-	actionButton: function(label, command, confirmText) {
+	detail: function(label, value) {
+		return E('div', { 'class': 'mt5700m-detail' }, [
+			E('div', { 'class': 'mt5700m-detail-label' }, label),
+			E('div', { 'class': 'mt5700m-detail-value' }, value || _('Unknown'))
+		]);
+	},
+
+	lockRow: function(label, value) {
+		var unlocked = value === '0' || value === '' || value == null;
+
+		return E('div', { 'class': 'mt5700m-lock' }, [
+			E('span', { 'class': 'mt5700m-lock-name' }, label),
+			E('span', { 'class': 'mt5700m-lock-state' + (unlocked ? '' : ' is-locked') }, unlocked ? _('Not locked') : _('Locked'))
+		]);
+	},
+
+	actionButton: function(label, command, cssClass, confirmText) {
 		return E('button', {
-			'class': 'btn cbi-button',
-			'click': function() {
+			'class': 'btn ' + (cssClass || 'cbi-button'),
+			'click': function(ev) {
+				var button = ev.currentTarget;
 				var run = function() {
+					button.disabled = true;
 					return fs.exec('/usr/sbin/mt5700m-at', command).then(function(res) {
-						ui.addNotification(null, E('pre', {}, res.stdout || _('Command completed.')));
+						ui.addNotification(null, E('p', {}, res.stdout ? _('Command completed.') : _('Command completed.')));
 					}, function(err) {
-						ui.addNotification(null, E('p', {}, err.message), 'danger');
+						ui.addNotification(null, E('p', {}, err.message || String(err)), 'danger');
+					}).finally(function() {
+						button.disabled = false;
 					});
 				};
 
-				if (confirmText)
-					return ui.showModal(_('Confirm Action'), [
-						E('p', {}, confirmText),
-						E('div', { 'class': 'right' }, [
-							E('button', {
-								'class': 'btn',
-								'click': ui.hideModal
-							}, _('Cancel')),
-							' ',
-							E('button', {
-								'class': 'btn cbi-button-negative',
-								'click': function() {
-									ui.hideModal();
-									run();
-								}
-							}, _('Continue'))
-						])
-					]);
+				if (!confirmText)
+					return run();
 
-				return run();
+				return ui.showModal(_('Confirm Action'), [
+					E('p', {}, confirmText),
+					E('div', { 'class': 'right' }, [
+						E('button', { 'class': 'btn', 'click': ui.hideModal }, _('Cancel')),
+						' ',
+						E('button', { 'class': 'btn cbi-button-negative', 'click': function() { ui.hideModal(); run(); } }, _('Continue'))
+					])
+				]);
 			}
 		}, label);
 	},
 
 	render: function(res) {
 		var data = this.parseStatus(res);
-		var connected = data.connected === '1' ? _('Connected') : _('Disconnected');
-		var connectedHint = data.channel === 'serial'
-			? '%s %s'.format(_('Serial'), data.at_port || '')
-			: '%s:%s'.format(data.host || '192.168.8.1', data.port || '20249');
-		var signal = [];
+		var connected = data.connected === '1';
+		var rsrp = parseFloat(data.rsrp);
+		var rsrq = parseFloat(data.rsrq);
+		var sinr = parseFloat(data.sinr);
+		var temp = parseFloat(data.temperature);
+		var channel = data.channel === 'serial'
+			? '%s · %s'.format(_('Serial Port'), data.at_port || _('Auto'))
+			: '%s · %s:%s'.format(_('Network TCP'), data.host || '192.168.8.1', data.port || '20249');
 
-		if (data.rsrp)
-			signal.push('RSRP %s dBm'.format(data.rsrp));
-		if (data.rsrq)
-			signal.push('RSRQ %s dB'.format(data.rsrq));
-		if (data.sinr)
-			signal.push('SINR %s dB'.format(data.sinr));
-
-		return E('div', {}, [
+		return E('div', { 'class': 'mt5700m-page' }, [
 			this.styleNode(),
-			E('h2', {}, _('MT5700M Management')),
-			E('div', { 'class': 'cbi-section-descr' }, _('Native LuCI management page for the MT5700M module network AT interface.')),
-			E('div', { 'class': 'mt5700m-grid' }, [
-				this.card(_('Connection'), connected, connectedHint),
-				this.card(_('Module'), data.model || data.manufacturer, data.revision || ''),
-				this.card(_('SIM Status'), data.sim, data.imei ? 'IMEI ' + data.imei : ''),
-				this.card(_('Operator'), data.operator, ''),
-				this.card(_('Network Mode'), data.sysmode_detail || data.sysmode, signal.join(' / ')),
-				this.card(_('Module Temperature'), data.temperature ? _('%s C').format(data.temperature) : '', 'AT^CHIPTEMP?'),
-				this.card(_('NR Lock'), data.nr_lock || _('Unknown'), 'AT^NRFREQLOCK?'),
-				this.card(_('LTE Lock'), data.lte_lock || _('Unknown'), 'AT^LTEFREQLOCK?')
+			data.error ? E('div', { 'class': 'alert-message warning mt5700m-alert' }, data.error) : null,
+			E('section', { 'class': 'mt5700m-hero' }, [
+				E('div', { 'class': 'mt5700m-hero-top' }, [
+					E('div', {}, [
+						E('div', { 'class': 'mt5700m-eyebrow' }, _('Mobile Network')),
+						E('h2', { 'class': 'mt5700m-title' }, data.operator || data.model || 'MT5700M'),
+						E('div', { 'class': 'mt5700m-summary' }, connected
+							? _('%s network is available and the modem is operating normally.').format(data.sysmode_detail || data.sysmode || '5G')
+							: _('The modem did not respond. Check the AT channel and module connection.'))
+					]),
+					E('div', { 'class': 'mt5700m-status' + (connected ? ' is-online' : '') }, [
+						E('span', { 'class': 'mt5700m-dot' }),
+						connected ? _('Connected') : _('Disconnected')
+					])
+				]),
+				E('div', { 'class': 'mt5700m-hero-meta' }, [
+					E('div', { 'class': 'mt5700m-meta' }, [ E('span', { 'class': 'mt5700m-meta-label' }, _('Network Mode')), E('span', { 'class': 'mt5700m-meta-value' }, data.sysmode_detail || data.sysmode || '--') ]),
+					E('div', { 'class': 'mt5700m-meta' }, [ E('span', { 'class': 'mt5700m-meta-label' }, _('Dialing process')), E('span', { 'class': 'mt5700m-meta-value' }, data.dial_running === '1' ? _('Running') : _('Stopped')) ]),
+					E('div', { 'class': 'mt5700m-meta' }, [ E('span', { 'class': 'mt5700m-meta-label' }, _('Network interface')), E('span', { 'class': 'mt5700m-meta-value' }, data.network_interface || '--') ])
+				])
+			]),
+			E('div', { 'class': 'mt5700m-section-title' }, _('Signal and temperature')),
+			E('div', { 'class': 'mt5700m-metrics' }, [
+				this.metric('RSRP', data.rsrp, 'dBm', isNaN(rsrp) ? 0 : (rsrp + 120) * 2.5),
+				this.metric('RSRQ', data.rsrq, 'dB', isNaN(rsrq) ? 0 : (rsrq + 20) * 5),
+				this.metric('SINR', data.sinr, 'dB', isNaN(sinr) ? 0 : (sinr + 10) * 2.5),
+				this.metric(_('Temperature'), data.temperature, '°C', isNaN(temp) ? 0 : 100 - Math.max(0, temp - 35) * 2)
+			]),
+			E('div', { 'class': 'mt5700m-section-title' }, _('Device details')),
+			E('div', { 'class': 'mt5700m-content-grid' }, [
+				E('section', { 'class': 'mt5700m-panel' }, [
+					E('div', { 'class': 'mt5700m-panel-head' }, _('Module information')),
+					E('div', { 'class': 'mt5700m-detail-grid' }, [
+						this.detail(_('Model'), data.model || data.manufacturer),
+						this.detail(_('Firmware version'), data.revision),
+						this.detail(_('Network interface'), data.network_interface),
+						this.detail(_('Management backend'), data.backend)
+					])
+				]),
+				E('section', { 'class': 'mt5700m-panel' }, [
+					E('div', { 'class': 'mt5700m-panel-head' }, _('Connection')),
+					E('div', { 'class': 'mt5700m-detail-grid' }, [
+						this.detail(_('Mobile data'), connected ? _('Connected') : _('Disconnected')),
+						this.detail(_('Dialing service'), data.dial_running === '1' ? _('Running') : _('Stopped')),
+						this.detail(_('AT Channel'), channel),
+						this.detail(_('Configuration'), _('QModem unified'))
+					])
+				])
 			]),
 			E('div', { 'class': 'mt5700m-actions' }, [
-				this.actionButton(_('Refresh'), [ 'status' ]),
-				this.actionButton(_('Unlock LTE/NR'), [ 'unlock' ], _('This will unlock LTE and NR frequency locks. QModem may redial after the modem changes state.')),
-				this.actionButton(_('Restart Module'), [ 'restart' ], _('This will restart the MT5700M module and temporarily interrupt 5G connectivity.'))
-			]),
-			data.error ? E('div', { 'class': 'alert-message warning' }, data.error) : null
+				E('button', { 'class': 'btn cbi-button-action', 'click': function() { window.location.reload(); } }, _('Refresh status')),
+				this.actionButton(_('Restart Module'), [ 'restart' ], 'cbi-button-negative', _('This will restart the MT5700M module and temporarily interrupt 5G connectivity.'))
+			])
 		]);
-	}
+	},
+
+	handleSave: null,
+	handleSaveApply: null,
+	handleReset: null
 });

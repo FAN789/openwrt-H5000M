@@ -6,6 +6,7 @@ NET_HOTPLUG=""
 USB_HOTPLUG=""
 QMODEM_NETWORK=""
 QMODEM_LED=""
+QMODEM_CONTROLLER=""
 
 for candidate in \
   "${SRC_DIR}/package/feeds/qmodem/qmodem/files/etc/hotplug.d/net/20-modem-net" \
@@ -16,6 +17,118 @@ for candidate in \
     break
   fi
 done
+
+for candidate in \
+  "${SRC_DIR}/package/feeds/qmodem/luci-app-qmodem/luasrc/controller/qmodem.lua" \
+  "${SRC_DIR}/feeds/qmodem/luci/luci-app-qmodem/luasrc/controller/qmodem.lua"; do
+  if [ -f "${candidate}" ]; then
+    QMODEM_CONTROLLER="${candidate}"
+    break
+  fi
+done
+
+if [ -n "${QMODEM_CONTROLLER}" ] && ! grep -q "H5000M_QMODEM_UNIFIED_MENU_V2" "${QMODEM_CONTROLLER}"; then
+  python3 - "${QMODEM_CONTROLLER}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+anchor = '\tentry({"admin", "modem", "qmodem"}, alias("admin", "modem", "qmodem", "modem_info"), luci.i18n.translate("QModem"), 100).dependent = true\n'
+v1_anchor = '''\t-- H5000M_QMODEM_UNIFIED_MENU
+\t-- Keep the legacy routes available for expert troubleshooting, but avoid a
+\t-- second visible modem manager when the unified MT5700M UI is installed.
+\tlocal qmodem_root = entry({"admin", "modem", "qmodem"}, alias("admin", "modem", "qmodem", "modem_info"), luci.i18n.translate("QModem"), 100)
+\tqmodem_root.dependent = true
+\tqmodem_root.hidden = nixio.fs.access("/etc/config/mt5700m")
+'''
+replacement = '''\t-- H5000M_QMODEM_UNIFIED_MENU_V2
+\t-- Keep the legacy routes available for expert troubleshooting, but avoid a
+\t-- second visible modem manager when the unified MT5700M UI is installed.
+\tlocal qmodem_title = luci.i18n.translate("QModem")
+\tif nixio.fs.access("/etc/config/mt5700m") then
+\t\tqmodem_title = nil
+\tend
+\tlocal qmodem_root = entry({"admin", "modem", "qmodem"}, alias("admin", "modem", "qmodem", "modem_info"), qmodem_title, 100)
+\tqmodem_root.dependent = true
+'''
+
+if v1_anchor in text:
+    text = text.replace(v1_anchor, replacement, 1)
+elif anchor in text:
+    text = text.replace(anchor, replacement, 1)
+else:
+    raise SystemExit(f"missing QModem menu anchor in {path}")
+
+path.write_text(text, encoding="utf-8")
+PY
+  echo "Applied QModem unified-menu compatibility patch: ${QMODEM_CONTROLLER}"
+else
+  echo "Skipped QModem unified-menu compatibility patch: file missing or already patched."
+fi
+
+if [ -n "${QMODEM_CONTROLLER}" ] && ! grep -q "H5000M_QMODEM_UNIFIED_MENU_V3" "${QMODEM_CONTROLLER}"; then
+  python3 - "${QMODEM_CONTROLLER}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+anchor = '''    if not nixio.fs.access("/etc/config/qmodem") then
+        return
+    end
+'''
+insert = '''    -- H5000M_QMODEM_UNIFIED_MENU_V3
+    -- The native MT5700M manager replaces the legacy QModem pages. Keep the
+    -- old root URL as a compatibility redirect without publishing a menu item.
+    if nixio.fs.access("/etc/config/mt5700m") then
+        entry({"admin", "modem", "qmodem"}, alias("admin", "modem", "mt5700m", "status"), nil).dependent = false
+        return
+    end
+'''
+
+if anchor not in text:
+    raise SystemExit(f"missing QModem index anchor in {path}")
+
+path.write_text(text.replace(anchor, anchor + insert, 1), encoding="utf-8")
+PY
+  echo "Applied QModem unified-menu redirect patch: ${QMODEM_CONTROLLER}"
+else
+  echo "Skipped QModem unified-menu redirect patch: file missing or already patched."
+fi
+
+if [ -n "${QMODEM_CONTROLLER}" ] && ! grep -q "H5000M_QMODEM_UNIFIED_MENU_V4" "${QMODEM_CONTROLLER}"; then
+  python3 - "${QMODEM_CONTROLLER}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+v3 = '''    -- H5000M_QMODEM_UNIFIED_MENU_V3
+    -- The native MT5700M manager replaces the legacy QModem pages. Keep the
+    -- old root URL as a compatibility redirect without publishing a menu item.
+    if nixio.fs.access("/etc/config/mt5700m") then
+        entry({"admin", "modem", "qmodem"}, alias("admin", "modem", "mt5700m", "status"), nil).dependent = false
+        return
+    end
+'''
+v4 = '''    -- H5000M_QMODEM_UNIFIED_MENU_V4
+    -- The native MT5700M manager replaces the legacy QModem pages. The QModem
+    -- ubus service remains active; only its duplicate legacy LuCI tree is omitted.
+    if nixio.fs.access("/etc/config/mt5700m") then
+        return
+    end
+'''
+
+if v3 not in text:
+    raise SystemExit(f"missing QModem V3 menu block in {path}")
+
+path.write_text(text.replace(v3, v4, 1), encoding="utf-8")
+PY
+  echo "Applied QModem duplicate-menu suppression patch: ${QMODEM_CONTROLLER}"
+else
+  echo "Skipped QModem duplicate-menu suppression patch: file missing or already patched."
+fi
 
 for candidate in \
   "${SRC_DIR}/package/feeds/qmodem/qmodem/files/etc/hotplug.d/usb/20-modem-usb" \
