@@ -1,0 +1,39 @@
+# Web management and Chinese localization
+luci
+luci-ssl
+luci-app-package-manager
+luci-app-attendedsysupgrade
+luci-app-ttyd
+luci-i18n-base-zh-cn
+luci-i18n-firewall-zh-cn
+luci-i18n-package-manager-zh-cn
+luci-i18n-attendedsysupgrade-zh-cn
+luci-i18n-ttyd-zh-cn
+
+# Common administration and diagnostics
+ca-bundle
+curl
+wget-ssl
+bash
+nano
+htop
+ethtool
+ip-full
+-ip-tiny
+tcpdump-mini
+lsof
+bind-dig
+jq
+rsync
+unzip
+tar
+openssh-sftp-server
+
+# Common USB and removable-storage support
+block-mount
+kmod-usb-storage
+kmod-fs-ext4
+kmod-fs-exfat
+kmod-fs-ntfs3
+usbutils
+pciutils

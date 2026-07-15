@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# Keep the official device and port definitions intact. This script only
+# supplies product-level locale and management defaults.
+uci -q set system.@system[0].hostname='H5000M'
+uci -q set system.@system[0].zonename='Asia/Shanghai'
+uci -q set system.@system[0].timezone='CST-8'
+uci -q set luci.main.lang='zh_cn'
+uci -q set network.lan.ipaddr='192.168.10.1'
+
+uci -q commit system
+uci -q commit luci
+uci -q commit network
+
+exit 0
