@@ -49,11 +49,18 @@ jobs:
           set -euo pipefail
           imagebuilder="${RUNNER_TEMP}/h5000m-imagebuilder"
           packages="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' configs/official-base.packages | tr '\n' ' ')"
+          output_dir="${GITHUB_WORKSPACE}/artifacts/official-base"
+          mkdir -p "${output_dir}"
 
           make -C "${imagebuilder}" image \
             PROFILE=hiveton_h5000m \
             PACKAGES="${packages}" \
             FILES="${GITHUB_WORKSPACE}/official-base-files"
+
+          make -C "${imagebuilder}" manifest \
+            PROFILE=hiveton_h5000m \
+            PACKAGES="${packages}" \
+            > "${output_dir}/installed-package-manifest.txt"
 
       - name: 整理并校验产物
         shell: bash
@@ -61,6 +68,7 @@ jobs:
           set -euo pipefail
           target_dir="${RUNNER_TEMP}/h5000m-imagebuilder/bin/targets/mediatek/filogic"
           output_dir="${GITHUB_WORKSPACE}/artifacts/official-base"
+          imagebuilder="${RUNNER_TEMP}/h5000m-imagebuilder"
           mkdir -p "${output_dir}"
 
           cp "${target_dir}"/openwrt-mediatek-filogic-hiveton_h5000m-* "${output_dir}/"
@@ -69,7 +77,21 @@ jobs:
           cp configs/official-base.packages "${output_dir}/"
           (cd "${output_dir}" && sha256sum openwrt-* > SHA256SUMS)
 
-          test -s "${output_dir}/openwrt-mediatek-filogic-hiveton_h5000m-squashfs-sysupgrade.bin"
+          sysupgrade="${output_dir}/openwrt-mediatek-filogic-hiveton_h5000m-squashfs-sysupgrade.bin"
+          test -s "${sysupgrade}"
+
+          verify_dir="${RUNNER_TEMP}/h5000m-base-verify"
+          rm -rf "${verify_dir}"
+          mkdir -p "${verify_dir}"
+          tar -xf "${sysupgrade}" -C "${verify_dir}"
+          "${imagebuilder}/staging_dir/host/bin/unsquashfs" \
+            -d "${verify_dir}/rootfs" \
+            "${verify_dir}/sysupgrade-hiveton_h5000m/root"
+
+          test -x "${verify_dir}/rootfs/etc/uci-defaults/90-h5000m-base"
+          test -x "${verify_dir}/rootfs/etc/init.d/uhttpd"
+          test -e "${verify_dir}/rootfs/www/index.html"
+          grep -q "192.168.10.1" "${verify_dir}/rootfs/etc/uci-defaults/90-h5000m-base"
           cat "${output_dir}/SHA256SUMS"
 
       - name: 上传基础固件
