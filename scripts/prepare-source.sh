@@ -43,7 +43,15 @@ if [ -d "${SRC_DIR}/.git" ]; then
 else
   echo "克隆 OpenWrt 官方源码：${REF}"
   mkdir -p "$(dirname "${SRC_DIR}")"
-  git clone --depth=1 --branch "${REF}" "${REPO_URL}" "${SRC_DIR}"
+  git clone --filter=blob:none --no-checkout --depth=1 "${REPO_URL}" "${SRC_DIR}"
+  if git -C "${SRC_DIR}" rev-parse --verify --quiet "${REF}^{commit}" >/dev/null; then
+    git -C "${SRC_DIR}" checkout --detach "${REF}^{commit}"
+  elif git -C "${SRC_DIR}" rev-parse --verify --quiet "refs/tags/${REF}^{commit}" >/dev/null; then
+    git -C "${SRC_DIR}" checkout --detach "refs/tags/${REF}^{commit}"
+  else
+    git -C "${SRC_DIR}" fetch --tags --depth=1 origin "${REF}"
+    git -C "${SRC_DIR}" checkout --detach FETCH_HEAD
+  fi
 fi
 
 if grep -q '^define Device/hiveton_h5000m$' "${SRC_DIR}/target/linux/mediatek/image/filogic.mk" && \
