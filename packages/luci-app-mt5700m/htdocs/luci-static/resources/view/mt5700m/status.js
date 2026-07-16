@@ -2,54 +2,17 @@
 'require view';
 'require fs';
 'require rpc';
-'require uci';
 'require ui';
+'require mt5700m.controls as controls';
 
-var callBaseInfo = rpc.declare({ object: 'qmodem', method: 'base_info', params: [ 'config_section' ], expect: { } });
-var callCellInfo = rpc.declare({ object: 'qmodem', method: 'cell_info', params: [ 'config_section' ], expect: { } });
-var callDialStatus = rpc.declare({ object: 'qmodem', method: 'dial_status', params: [ 'config_section' ], expect: { } });
+var callManagerStatus = rpc.declare({ object: 'mt5700m', method: 'status', expect: { } });
 
 return view.extend({
 	load: function() {
-		return uci.load('qmodem').then(function() {
-			var sections = uci.sections('qmodem', 'modem-device');
-			var matches = sections.filter(function(section) {
-				var identity = [ section.name, section.alias, section.manufacturer, section.platform ].join(' ').toLowerCase();
-				return /mt5700|huawei|hisilicon/.test(identity) || section.at_port === '/dev/ttyUSB1';
-			});
-			var modem = matches.find(function(section) { return section.state !== 'disabled'; }) || matches[0] || sections.find(function(section) { return section.state !== 'disabled'; }) || sections[0];
-
-			if (!modem)
-				throw new Error(_('No QModem modem was found.'));
-
-			/* The native helper obtains one coherent snapshot through at-daemon.
-			 * Running QModem base_info and cell_info in parallel makes both paths
-			 * compete for the same serial channel and occasionally returns a
-			 * partial page. Read the snapshot first, then add the lightweight
-			 * QModem connection state. */
-			return fs.exec('/usr/sbin/mt5700m-at', [ 'status' ]).then(function(nativeStatus) {
-				return Promise.all([
-					callBaseInfo(modem['.name']).catch(function() { return {}; }),
-					callDialStatus(modem['.name']).catch(function() { return {}; })
-				]).then(function(results) {
-					return { qmodem: true, modem: modem, native: nativeStatus, base: results[0], dial: results[1] };
-				});
-			}, function(nativeError) {
-				return Promise.all([
-					callBaseInfo(modem['.name']),
-					callCellInfo(modem['.name']),
-					callDialStatus(modem['.name'])
-				]).then(function(results) {
-					return { qmodem: true, modem: modem, base: results[0], cell: results[1], dial: results[2] };
-				}, function() {
-					return { stdout: '', stderr: nativeError.message || String(nativeError) };
-				});
-			});
-		}).catch(function(err) {
-			return fs.exec('/usr/sbin/mt5700m-at', [ 'status' ]).catch(function(fallbackErr) {
-				return { stdout: '', stderr: fallbackErr.message || err.message || String(fallbackErr) };
-			});
-		});
+		return Promise.all([
+			fs.exec('/usr/sbin/mt5700m-at', [ 'status' ]).catch(function(err) { return { stdout:'', stderr:err.message || String(err) }; }),
+			callManagerStatus().catch(function() { return {}; })
+		]).then(function(results) { return { native:results[0], manager:results[1] }; });
 	},
 
 	parseStatus: function(res) {
@@ -62,47 +25,22 @@ return view.extend({
 					data[line.substring(0, pos)] = line.substring(pos + 1);
 			});
 		};
-		var collect = function(entries) {
-			(entries || []).forEach(function(entry) {
-				if (entry && entry.key != null)
-					data[entry.key] = entry.value;
-			});
-		};
-
-		if (res.qmodem) {
-			if (res.native)
-				parseOutput(res.native.stdout);
-
-			data.reachable = data.connected === '1' ? '1' : '0';
-			collect(res.base && res.base.modem_info);
-			collect(res.cell && res.cell.modem_info);
-			data.model = data.name || res.modem.name || 'MT5700M';
-			data.revision = data.revision || '';
-			data.at_port = data.at_port || res.modem.at_port || '';
-			data.temperature = String(data.temperature || '').replace(/[^0-9.-]/g, '');
-			/* QModem reports these fields with upper-case keys, while the native
-			 * MT5700M snapshot uses lower-case keys. Keep the native values when
-			 * QModem omits a field instead of replacing them with an empty string. */
-			data.sysmode_detail = data.network_mode || data.sysmode_detail || data.sysmode || '';
-			data.rsrp = data.RSRP || data.rsrp || '';
-			data.rsrq = data.RSRQ || data.rsrq || '';
-			data.sinr = data.SINR || data.sinr || '';
-			if (data.reachable !== '1' && (data.name || data.revision || data.at_port))
-				data.reachable = '1';
-			data.connected = /^(yes|connected|1|true)$/i.test(String(data.connect_status || data.connected || '')) ? '1' : '0';
-			data.dial_running = String((res.dial || {}).running || '') === 'true' ? '1' : '0';
-			data.network_interface = res.modem.network || res.modem.data_interface || '';
-			data.channel = 'serial';
-			data.backend = 'QModem';
-			return data;
-		}
-
-		parseOutput(res.stdout);
+		parseOutput(res.native && res.native.stdout);
 
 		data.reachable = data.connected === '1' ? '1' : '0';
-		data.connected = data.reachable === '1' && !/^(|NOSERVICE|NO SERVICE|UNKNOWN)$/i.test(data.sysmode || data.sysmode_detail || '') ? '1' : '0';
-		data.error = res.stderr || '';
-		data.backend = _('Direct AT fallback');
+		data.model = data.product_name || 'MT5700M';
+		data.temperature = String(data.temperature || '').replace(/[^0-9.-]/g, '');
+		data.sysmode_detail = data.network_mode || data.sysmode_detail || data.sysmode || '';
+		data.at_port = data.at_port || res.manager.at_port || '';
+		data.connected = res.manager.connected === true && data.reachable === '1' && !/^(|NOSERVICE|NO SERVICE|UNKNOWN)$/i.test(data.sysmode || data.sysmode_detail || '') ? '1' : '0';
+		if (/^(upgrade|dump|unknown)$/.test(data.usb_state || '')) {
+			data.reachable = '0';
+			data.connected = '0';
+		}
+		data.dial_running = res.manager.running === true ? '1' : '0';
+		data.network_interface = res.manager.network || '';
+		data.error = (res.native && res.native.stderr) || '';
+		data.backend = _('Integrated MT5700M service');
 		return data;
 	},
 
@@ -126,7 +64,9 @@ return view.extend({
 			'.mt5700m-section-title{font-size:16px;font-weight:700;margin:22px 0 11px}',
 			'.mt5700m-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}',
 			'.mt5700m-metric{padding:16px;border:1px solid var(--border-color-medium,#d9dde4);border-radius:13px;background:var(--background-color-high,#fff);box-shadow:0 3px 12px rgba(20,32,50,.04)}',
+			'.mt5700m-metric.is-signal{padding:11px 14px 9px}',
 			'.mt5700m-metric-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}',
+			'.mt5700m-metric.is-signal .mt5700m-metric-head{margin-bottom:3px}',
 			'.mt5700m-metric-label{font-size:12px;color:var(--text-color-medium,#69717d)}',
 			'.mt5700m-quality{display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:999px;background:#eef2f6;color:#6b7480;font-size:10px;font-weight:700}',
 			'.mt5700m-quality:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}',
@@ -136,9 +76,12 @@ return view.extend({
 			'.mt5700m-metric-unit{font-size:12px;color:var(--text-color-medium,#69717d)}',
 			'.mt5700m-meter{position:relative;height:6px;margin-top:14px;border-radius:999px;background:linear-gradient(90deg,#db5b52 0%,#e4a23a 34%,#4b94df 67%,#13a979 100%);box-shadow:inset 0 0 0 1px rgba(30,42,56,.06)}',
 			'.mt5700m-meter-marker{position:absolute;top:50%;width:11px;height:11px;border:2px solid #fff;border-radius:50%;background:#263746;box-shadow:0 1px 4px rgba(20,35,50,.34);transform:translate(-50%,-50%)}',
-			'.mt5700m-signal-bars{display:flex;align-items:flex-end;gap:3px;height:44px;margin-top:5px;padding:0 1px}',
+			'.mt5700m-signal-bars{display:flex;align-items:flex-end;gap:3px;height:44px;margin-top:2px;padding:0 1px}',
 			'.mt5700m-signal-bar{flex:1;min-width:2px;border-radius:2px 2px 1px 1px;background:var(--border-color-medium,#d9dde4);opacity:.58;transition:background-color .2s,opacity .2s}',
 			'.mt5700m-signal-bar.is-active{background:#4d94db;opacity:1}.mt5700m-signal-bars.is-excellent .mt5700m-signal-bar.is-active{background:#13a979}.mt5700m-signal-bars.is-good .mt5700m-signal-bar.is-active{background:#4b94df}.mt5700m-signal-bars.is-fair .mt5700m-signal-bar.is-active{background:#e4a23a}.mt5700m-signal-bars.is-weak .mt5700m-signal-bar.is-active{background:#db5b52}',
+			'.mt5700m-ambr{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:14px 16px;margin-bottom:10px;border:1px solid #d5e5f5;border-radius:13px;background:linear-gradient(135deg,#f4f9ff,#f3faf8)}',
+			'.mt5700m-ambr-copy{min-width:205px}.mt5700m-ambr-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700}.mt5700m-ambr-tag{padding:3px 7px;border-radius:999px;background:#e6f1ff;color:#176bc1;font-size:10px;font-weight:700}.mt5700m-ambr-desc{margin-top:4px;color:var(--text-color-medium,#69717d);font-size:11px;line-height:1.45}',
+			'.mt5700m-ambr-data{display:grid;grid-template-columns:1.25fr 1.4fr 1fr 1fr;align-items:center;gap:20px;flex:1;max-width:700px}.mt5700m-ambr-item{min-width:0}.mt5700m-ambr-item span{display:block;margin-bottom:3px;color:var(--text-color-medium,#69717d);font-size:10px}.mt5700m-ambr-item strong{display:block;overflow:hidden;text-overflow:ellipsis;font-size:17px;font-weight:720;white-space:nowrap}.mt5700m-ambr-item.is-id strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;letter-spacing:.01em}',
 			'.mt5700m-ca{border:1px solid var(--border-color-medium,#d9dde4);border-radius:13px;background:var(--background-color-high,#fff);overflow:hidden}',
 			'.mt5700m-ca-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 17px;border-bottom:1px solid var(--border-color-low,#edf0f4)}.mt5700m-ca-title{font-size:14px;font-weight:700}.mt5700m-ca-summary{margin-top:3px;color:var(--text-color-medium,#69717d);font-size:12px}',
 			'.mt5700m-ca-badge{padding:5px 9px;border-radius:999px;background:#eef2f6;color:#6b7480;font-size:11px;font-weight:700;white-space:nowrap}.mt5700m-ca-badge.active{background:#e8f8f1;color:#087c60}',
@@ -162,8 +105,8 @@ return view.extend({
 			'.mt5700m-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:16px}',
 			'.mt5700m-actions .btn{border-radius:9px;padding:7px 14px}',
 			'.mt5700m-alert{margin:0 0 14px}',
-			'@media(max-width:760px){.mt5700m-hero{padding:20px}.mt5700m-title{font-size:23px}.mt5700m-hero-top{display:block}.mt5700m-status{margin-top:14px}.mt5700m-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.mt5700m-content-grid{grid-template-columns:1fr}}',
-			'@media(max-width:430px){.mt5700m-metrics{grid-template-columns:1fr}.mt5700m-ca-stats{grid-template-columns:1fr}.mt5700m-carrier{display:block}.mt5700m-carrier-detail{text-align:left;margin-top:5px}.mt5700m-detail-grid{grid-template-columns:1fr}.mt5700m-detail:nth-child(odd){padding-right:0}.mt5700m-detail:nth-last-child(2){border-bottom:1px solid var(--border-color-low,#edf0f4)}}'
+			'@media(max-width:760px){.mt5700m-hero{padding:20px}.mt5700m-title{font-size:23px}.mt5700m-hero-top{display:block}.mt5700m-status{margin-top:14px}.mt5700m-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.mt5700m-ambr{display:block}.mt5700m-ambr-data{grid-template-columns:repeat(2,minmax(0,1fr));max-width:none;margin-top:13px}.mt5700m-content-grid{grid-template-columns:1fr}}',
+			'@media(max-width:430px){.mt5700m-metrics{grid-template-columns:1fr}.mt5700m-ambr-data{gap:12px}.mt5700m-ca-stats{grid-template-columns:1fr}.mt5700m-carrier{display:block}.mt5700m-carrier-detail{text-align:left;margin-top:5px}.mt5700m-detail-grid{grid-template-columns:1fr}.mt5700m-detail:nth-child(odd){padding-right:0}.mt5700m-detail:nth-last-child(2){border-bottom:1px solid var(--border-color-low,#edf0f4)}}'
 		].join(''));
 	},
 
@@ -181,7 +124,7 @@ return view.extend({
 				'style': 'height:%dpx'.format(8 + i * 3)
 			}));
 
-		return E('div', { 'class': 'mt5700m-metric' }, [
+		return E('div', { 'class': 'mt5700m-metric mt-ui-card' + (quality.signal ? ' is-signal' : '') }, [
 			E('div', { 'class': 'mt5700m-metric-head' }, [
 				E('div', { 'class': 'mt5700m-metric-label' }, label),
 				E('span', { 'class': 'mt5700m-quality ' + quality.cls }, missing ? _('No data') : quality.label)
@@ -257,6 +200,7 @@ return view.extend({
 		return {
 			available: carriers.length > 0,
 			active: data.ca_active === '1' && carriers.length > 1,
+			dual: data.dc_active === '1',
 			mode: data.ca_mode || '',
 			count: carriers.length,
 			dlBandwidth: data.ca_dl_bandwidth || '',
@@ -265,18 +209,51 @@ return view.extend({
 		};
 	},
 
+	formatSubscriptionRate: function(value) {
+		var rate = parseFloat(value);
+
+		if (isNaN(rate) || rate <= 0)
+			return '--';
+
+		return (rate % 1 ? rate.toFixed(1) : rate.toFixed(0)) + ' Mbps';
+	},
+
+	subscriptionPanel: function(data) {
+		var down = this.formatSubscriptionRate(data.ambr_down_mbps);
+		var up = this.formatSubscriptionRate(data.ambr_up_mbps);
+		var phone = data.phone_number || (data.phone_number_state === 'not_stored' ? _('Not stored on SIM') : '--');
+
+		return E('section', { 'class': 'mt5700m-ambr mt-ui-card' }, [
+			E('div', { 'class': 'mt5700m-ambr-copy' }, [
+				E('div', { 'class': 'mt5700m-ambr-title' }, [
+					E('span', {}, _('SIM and subscription')),
+					E('span', { 'class': 'mt5700m-ambr-tag' }, _('Local only'))
+				]),
+				E('div', { 'class': 'mt5700m-ambr-desc' }, _('The phone number and device ID are displayed locally; subscription rates are network-authorized limits, not a live speed test.'))
+			]),
+			E('div', { 'class': 'mt5700m-ambr-data' }, [
+				E('div', { 'class': 'mt5700m-ambr-item is-id' }, [ E('span', {}, _('Phone Number')), E('strong', { 'title': phone }, phone) ]),
+				E('div', { 'class': 'mt5700m-ambr-item is-id' }, [ E('span', {}, 'IMEI'), E('strong', { 'title': data.imei || '--' }, data.imei || '--') ]),
+				E('div', { 'class': 'mt5700m-ambr-item' }, [ E('span', {}, _('Subscription downlink')), E('strong', {}, down) ]),
+				E('div', { 'class': 'mt5700m-ambr-item' }, [ E('span', {}, _('Subscription uplink')), E('strong', {}, up) ])
+			])
+		]);
+	},
+
 	carrierPanel: function(info) {
-		var badge = !info.available ? _('Unavailable') : info.active ? _('Aggregating') : _('Single carrier');
+		var badge = !info.available ? _('Unavailable') : info.active ? _('Aggregating') : info.dual ? _('Dual connectivity') : _('Single carrier');
 		var summary = !info.available
 			? _('Current carrier information is unavailable.')
 			: info.active
 				? _('%s is active with %d carriers.').format(info.mode, info.count)
-				: _('%s is currently using one carrier.').format(info.mode || _('Mobile network'));
+				: info.dual
+					? _('%s dual connectivity is active.').format(info.mode || 'EN-DC')
+					: _('%s is currently using one carrier.').format(info.mode || _('Mobile network'));
 
-		return E('section', { 'class': 'mt5700m-ca' }, [
+		return E('section', { 'class': 'mt5700m-ca mt-ui-card' }, [
 			E('div', { 'class': 'mt5700m-ca-head' }, [
-				E('div', {}, [ E('div', { 'class': 'mt5700m-ca-title' }, _('Carrier aggregation')), E('div', { 'class': 'mt5700m-ca-summary' }, summary) ]),
-				E('span', { 'class': 'mt5700m-ca-badge' + (info.active ? ' active' : '') }, badge)
+				E('div', {}, [ E('div', { 'class': 'mt5700m-ca-title' }, _('Carrier status')), E('div', { 'class': 'mt5700m-ca-summary' }, summary) ]),
+				E('span', { 'class': 'mt5700m-ca-badge' + (info.active || info.dual ? ' active' : '') }, badge)
 			]),
 			info.available ? E('div', { 'class': 'mt5700m-ca-body' }, [
 				E('div', { 'class': 'mt5700m-ca-stats' }, [
@@ -314,7 +291,7 @@ return view.extend({
 		]);
 	},
 
-	actionButton: function(label, command, cssClass, confirmText) {
+	actionButton: function(label, command, cssClass, confirmText, recoveryDelay) {
 		return E('button', {
 			'class': 'btn ' + (cssClass || 'cbi-button'),
 			'click': function(ev) {
@@ -322,7 +299,12 @@ return view.extend({
 				var run = function() {
 					button.disabled = true;
 					return fs.exec('/usr/sbin/mt5700m-at', command).then(function(res) {
-						ui.addNotification(null, E('p', {}, res.stdout ? _('Command completed.') : _('Command completed.')));
+						if (recoveryDelay) {
+							ui.addNotification(null, E('p', {}, _('Restart accepted. The USB interface normally returns in about 22 seconds.')));
+							window.setTimeout(function() { window.location.reload(); }, recoveryDelay);
+						} else {
+							ui.addNotification(null, E('p', {}, _('Command completed.')));
+						}
 					}, function(err) {
 						ui.addNotification(null, E('p', {}, err.message || String(err)), 'danger');
 					}).finally(function() {
@@ -354,6 +336,9 @@ return view.extend({
 		var sinr = parseFloat(data.sinr);
 		var temp = parseFloat(data.temperature);
 		var carrierInfo = this.carrierInfo(data);
+		var usbStateNames = { normal: _('Normal mode'), upgrade: _('Upgrade mode'), dump: _('Dump mode'), unknown: _('Unknown USB mode'), absent: _('Not detected') };
+		var usbState = usbStateNames[data.usb_state] || data.usb_state || _('Not detected');
+		var abnormalUsb = data.usb_state === 'upgrade' || data.usb_state === 'dump' || data.usb_state === 'unknown';
 		var operator = data.operator || '';
 		if (!/[A-Za-z0-9\u4e00-\u9fff]/.test(operator))
 			operator = '';
@@ -361,14 +346,16 @@ return view.extend({
 			? '%s · %s'.format(_('Serial Port'), data.at_port || _('Auto'))
 			: '%s · %s:%s'.format(_('Network TCP'), data.host || '192.168.8.1', data.port || '20249');
 
-		return E('div', { 'class': 'mt5700m-page' }, [
+		return E('div', { 'class': 'mt5700m-page mt-ui-page' }, [
 			this.styleNode(),
+			controls.styleNode(),
 			data.error ? E('div', { 'class': 'alert-message warning mt5700m-alert' }, data.error) : null,
-			E('section', { 'class': 'mt5700m-hero' }, [
+			abnormalUsb ? E('div', { 'class': 'alert-message warning mt5700m-alert' }, _('The MT5700M is in %s (USB PID %s). Mobile data and AT management remain unavailable until normal mode returns.').format(usbState, data.usb_pid || '--')) : null,
+			E('section', { 'class': 'mt5700m-hero mt-ui-hero' }, [
 				E('div', { 'class': 'mt5700m-hero-top' }, [
 					E('div', {}, [
-						E('div', { 'class': 'mt5700m-eyebrow' }, _('Mobile Network')),
-						E('h2', { 'class': 'mt5700m-title' }, operator || data.model || 'MT5700M'),
+						E('div', { 'class': 'mt5700m-eyebrow' }, _('MT5700M dedicated management')),
+						E('h2', { 'class': 'mt5700m-title' }, _('MT5700M Module')),
 						E('div', { 'class': 'mt5700m-summary' }, !reachable
 							? _('The modem did not respond. Check the AT channel and module connection.')
 							: connected
@@ -381,8 +368,9 @@ return view.extend({
 					])
 				]),
 				E('div', { 'class': 'mt5700m-hero-meta' }, [
+					E('div', { 'class': 'mt5700m-meta' }, [ E('span', { 'class': 'mt5700m-meta-label' }, _('Operator')), E('span', { 'class': 'mt5700m-meta-value' }, operator || '--') ]),
 					E('div', { 'class': 'mt5700m-meta' }, [ E('span', { 'class': 'mt5700m-meta-label' }, _('Network Mode')), E('span', { 'class': 'mt5700m-meta-value' }, data.sysmode_detail || data.sysmode || '--') ]),
-					E('div', { 'class': 'mt5700m-meta' }, [ E('span', { 'class': 'mt5700m-meta-label' }, _('Carrier aggregation')), E('span', { 'class': 'mt5700m-meta-value' }, !carrierInfo.available ? '--' : carrierInfo.active ? carrierInfo.mode + ' · ' + carrierInfo.count : _('Single carrier')) ]),
+					E('div', { 'class': 'mt5700m-meta' }, [ E('span', { 'class': 'mt5700m-meta-label' }, _('Radio link')), E('span', { 'class': 'mt5700m-meta-value' }, !carrierInfo.available ? '--' : carrierInfo.active ? carrierInfo.mode + ' · ' + carrierInfo.count : carrierInfo.dual ? carrierInfo.mode : _('Single carrier')) ]),
 					E('div', { 'class': 'mt5700m-meta' }, [ E('span', { 'class': 'mt5700m-meta-label' }, _('Dialing process')), E('span', { 'class': 'mt5700m-meta-value' }, data.dial_running === '1' ? _('Running') : _('Stopped')) ]),
 					E('div', { 'class': 'mt5700m-meta' }, [ E('span', { 'class': 'mt5700m-meta-label' }, _('Network interface')), E('span', { 'class': 'mt5700m-meta-value' }, data.network_interface || '--') ])
 				])
@@ -392,34 +380,37 @@ return view.extend({
 				this.metric('RSRP', data.rsrp, 'dBm', this.signalQuality('rsrp', rsrp)),
 				this.metric('RSRQ', data.rsrq, 'dB', this.signalQuality('rsrq', rsrq)),
 				this.metric('SINR', data.sinr, 'dB', this.signalQuality('sinr', sinr)),
-				this.metric(_('Temperature'), data.temperature, '°C', this.temperatureQuality(temp))
+				this.metric(_('Peak sensor temperature'), data.temperature, '°C', this.temperatureQuality(temp))
 			]),
 			E('div', { 'class': 'mt5700m-section-title' }, _('Radio link')),
+			this.subscriptionPanel(data),
 			this.carrierPanel(carrierInfo),
 			E('div', { 'class': 'mt5700m-section-title' }, _('Device details')),
 			E('div', { 'class': 'mt5700m-content-grid' }, [
-				E('section', { 'class': 'mt5700m-panel' }, [
+				E('section', { 'class': 'mt5700m-panel mt-ui-card' }, [
 					E('div', { 'class': 'mt5700m-panel-head' }, _('Module information')),
 					E('div', { 'class': 'mt5700m-detail-grid' }, [
 						this.detail(_('Model'), data.model || data.manufacturer),
 						this.detail(_('Firmware version'), data.revision),
+						this.detail(_('USB state'), usbState),
+						this.detail(_('USB identity'), data.usb_pid ? '3466:' + data.usb_pid : '--'),
 						this.detail(_('Network interface'), data.network_interface),
 						this.detail(_('Management backend'), data.backend)
 					])
 				]),
-				E('section', { 'class': 'mt5700m-panel' }, [
+				E('section', { 'class': 'mt5700m-panel mt-ui-card' }, [
 					E('div', { 'class': 'mt5700m-panel-head' }, _('Connection')),
 					E('div', { 'class': 'mt5700m-detail-grid' }, [
 						this.detail(_('Mobile data'), connected ? _('Connected') : _('Disconnected')),
 						this.detail(_('Dialing service'), data.dial_running === '1' ? _('Running') : _('Stopped')),
 						this.detail(_('AT Channel'), channel),
-						this.detail(_('Configuration'), _('QModem unified'))
+						this.detail(_('Configuration'), _('MT5700M dedicated'))
 					])
 				])
 			]),
 			E('div', { 'class': 'mt5700m-actions' }, [
 				E('button', { 'class': 'btn cbi-button-action', 'click': function() { window.location.reload(); } }, _('Refresh status')),
-				this.actionButton(_('Restart Module'), [ 'restart' ], 'cbi-button-negative', _('This will restart the MT5700M module and temporarily interrupt 5G connectivity.'))
+				this.actionButton(_('Restart Module'), [ 'restart' ], 'cbi-button-negative', _('This will restart the MT5700M module and temporarily interrupt 5G connectivity.'), 24000)
 			])
 		]);
 	},

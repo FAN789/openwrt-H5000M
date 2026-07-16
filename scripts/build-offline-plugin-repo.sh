@@ -23,33 +23,21 @@ packages=(
 	luci-i18n-h5000m-fancontrol-zh-cn
 	luci-i18n-h5000m-netmode-zh-cn
 	luci-i18n-mt5700m-zh-cn
-	qmodem
-	bc
-	coreutils
-	coreutils-stat
 	kmod-mii
-	kmod-qmi_wwan_f
-	kmod-qmi_wwan_q
-	kmod-qmi_wwan_s
-	kmod-usb-acm
+	kmod-usb-common
+	kmod-usb-core
 	kmod-usb-ehci
 	kmod-usb-net
 	kmod-usb-net-cdc-ether
-	kmod-usb-net-cdc-mbim
 	kmod-usb-net-cdc-ncm
-	kmod-usb-net-huawei-cdc-ncm
-	kmod-usb-net-rndis
 	kmod-usb-serial
 	kmod-usb-serial-option
-	kmod-usb-serial-qualcomm
 	kmod-usb-serial-wwan
-	kmod-usb-wdm
+	kmod-usb-xhci-hcd
+	kmod-usb-xhci-mtk
 	kmod-usb2
-	modem_scan
-	ndisc6
-	quectel-CM-5G-M
+	kmod-usb3
 	sms-tool_q
-	tom_modem
 	ubus-at-daemon
 )
 
@@ -106,7 +94,6 @@ mkdir -p "${root_dir}/tmp" "${root_dir}/var/lock"
 	luci-app-h5000m-fancontrol \
 	luci-app-h5000m-netmode \
 	luci-app-mt5700m \
-	qmodem \
 	luci-i18n-h5000m-fancontrol-zh-cn \
 	luci-i18n-h5000m-netmode-zh-cn \
 	luci-i18n-mt5700m-zh-cn

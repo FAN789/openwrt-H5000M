@@ -1,0 +1,331 @@
+#!/bin/sh
+
+TAG='mt5700m-manager'
+LOCK_DIR="${MT5700M_MANAGER_LOCK:-/var/lock/mt5700m-manager.lock}"
+STATE_DIR="${MT5700M_MANAGER_STATE:-/var/run/mt5700m}"
+LOG_FILE="${MT5700M_MANAGER_LOG:-/tmp/mt5700m-manager.log}"
+USB_HELPER="${MT5700M_USB_HELPER:-/usr/share/mt5700m/usb.sh}"
+INTERFACE='MT5700M'
+INTERFACE6='MT5700Mv6'
+
+[ -r "${USB_HELPER}" ] && . "${USB_HELPER}"
+
+log_message() {
+	local message="$*"
+	mkdir -p "${STATE_DIR}"
+	printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "${message}" >> "${LOG_FILE}"
+	logger -t "${TAG}" -- "${message}"
+}
+
+acquire_lock() {
+	local owner
+	if mkdir "${LOCK_DIR}" 2>/dev/null; then
+		echo "$$" > "${LOCK_DIR}/pid"
+		return 0
+	fi
+	owner="$(cat "${LOCK_DIR}/pid" 2>/dev/null || true)"
+	case "${owner}" in ''|*[!0-9]*) owner='' ;; esac
+	if [ -z "${owner}" ] || ! kill -0 "${owner}" 2>/dev/null; then
+		rm -rf "${LOCK_DIR}" 2>/dev/null
+		mkdir "${LOCK_DIR}" 2>/dev/null || return 1
+		echo "$$" > "${LOCK_DIR}/pid"
+		return 0
+	fi
+	return 1
+}
+
+acquire_lock_wait() {
+	local attempts=0
+	while ! acquire_lock; do
+		attempts=$((attempts + 1))
+		[ "${attempts}" -lt 8 ] || return 1
+		sleep 1
+	done
+}
+
+release_lock() {
+	rm -rf "${LOCK_DIR}" 2>/dev/null
+}
+
+bool_value() {
+	case "$1" in 1|true) echo 1 ;; *) echo 0 ;; esac
+}
+
+config_value() {
+	uci -q get "mt5700m.connection.$1" 2>/dev/null || printf '%s\n' "$2"
+}
+
+set_if_changed() {
+	local key="$1" value="$2" current
+	current="$(uci -q get "${key}" 2>/dev/null || true)"
+	[ "${current}" = "${value}" ] && return 0
+	uci -q set "${key}=${value}" || return 1
+	CONFIG_CHANGED=1
+}
+
+delete_if_present() {
+	local key="$1"
+	uci -q get "${key}" >/dev/null 2>&1 || return 0
+	uci -q delete "${key}" || return 1
+	CONFIG_CHANGED=1
+}
+
+list_contains() {
+	local key="$1" wanted="$2" value
+	for value in $(uci -q get "${key}" 2>/dev/null); do
+		[ "${value}" = "${wanted}" ] && return 0
+	done
+	return 1
+}
+
+ensure_firewall_network() {
+	local network="$1" zone
+	zone="$(uci -q show firewall 2>/dev/null | sed -n "s/^\(firewall\.[^.]*\)\.name='wan'$/\1/p" | head -n 1)"
+	[ -n "${zone}" ] || return 0
+	list_contains "${zone}.network" "${network}" && return 0
+	uci -q add_list "${zone}.network=${network}" || return 1
+	FIREWALL_CHANGED=1
+}
+
+effective_policy() {
+	local mode owner configured_metric
+	mode="$(uci -q get h5000m_netmode.settings.mode 2>/dev/null || true)"
+	owner="$(uci -q get h5000m_netmode.settings.ipv6_owner 2>/dev/null || true)"
+	configured_metric="$(config_value metric 50)"
+	case "${configured_metric}" in ''|*[!0-9]*) configured_metric=50 ;; esac
+
+	case "${mode}" in
+		modem_first|modem_only) EFFECTIVE_METRIC=10 ;;
+		wan_first|wan_only) EFFECTIVE_METRIC=50 ;;
+		*) EFFECTIVE_METRIC="${configured_metric}" ;;
+	esac
+	case "${mode}" in wan_only) IPV4_DEFAULT=0 ;; *) IPV4_DEFAULT=1 ;; esac
+	case "${owner}" in
+		modem) IPV6_DEFAULT=1; IPV6_AUTO=1 ;;
+		wan) IPV6_DEFAULT=0; IPV6_AUTO=0 ;;
+		*)
+			case "${mode}" in modem_first|modem_only) IPV6_DEFAULT=1; IPV6_AUTO=1 ;; *) IPV6_DEFAULT=0; IPV6_AUTO=0 ;; esac
+			;;
+	esac
+}
+
+ensure_network() {
+	local netdev="$1" pdp_type dns current_dns
+	CONFIG_CHANGED=0
+	FIREWALL_CHANGED=0
+	pdp_type="$(config_value pdp_type ipv4v6)"
+	case "${pdp_type}" in ip|ipv6|ipv4v6) ;; *) pdp_type='ipv4v6' ;; esac
+	effective_policy
+
+	set_if_changed "network.${INTERFACE}" 'interface'
+	set_if_changed "network.${INTERFACE}.managed_by" 'mt5700m'
+	set_if_changed "network.${INTERFACE}.device" "${netdev}"
+	set_if_changed "network.${INTERFACE}.ifname" "${netdev}"
+	set_if_changed "network.${INTERFACE}.metric" "${EFFECTIVE_METRIC}"
+	set_if_changed "network.${INTERFACE}.defaultroute" "${IPV4_DEFAULT}"
+	set_if_changed "network.${INTERFACE}.norelease" '1'
+	delete_if_present "network.${INTERFACE}.modem_config"
+	if [ "${pdp_type}" = 'ipv6' ]; then
+		set_if_changed "network.${INTERFACE}.proto" 'none'
+	else
+		set_if_changed "network.${INTERFACE}.proto" 'dhcp'
+	fi
+	dns="$(uci -q get mt5700m.connection.dns_list 2>/dev/null || true)"
+	current_dns="$(uci -q get network.${INTERFACE}.dns 2>/dev/null || true)"
+	if [ -n "${dns}" ]; then
+		set_if_changed "network.${INTERFACE}.peerdns" '0'
+		if [ "${current_dns}" != "${dns}" ]; then
+			delete_if_present "network.${INTERFACE}.dns"
+			for dns in ${dns}; do uci -q add_list "network.${INTERFACE}.dns=${dns}"; done
+			CONFIG_CHANGED=1
+		fi
+	else
+		delete_if_present "network.${INTERFACE}.dns"
+		delete_if_present "network.${INTERFACE}.peerdns"
+	fi
+
+	if [ "${pdp_type}" = 'ip' ]; then
+		delete_if_present "network.${INTERFACE6}"
+	else
+		set_if_changed "network.${INTERFACE6}" 'interface'
+		set_if_changed "network.${INTERFACE6}.managed_by" 'mt5700m'
+		set_if_changed "network.${INTERFACE6}.proto" 'dhcpv6'
+		set_if_changed "network.${INTERFACE6}.device" "@${INTERFACE}"
+		set_if_changed "network.${INTERFACE6}.ifname" "@${INTERFACE}"
+		set_if_changed "network.${INTERFACE6}.metric" "${EFFECTIVE_METRIC}"
+		set_if_changed "network.${INTERFACE6}.defaultroute" "${IPV6_DEFAULT}"
+		set_if_changed "network.${INTERFACE6}.auto" "${IPV6_AUTO}"
+		set_if_changed "network.${INTERFACE6}.extendprefix" '1'
+		delete_if_present "network.${INTERFACE6}.modem_config"
+	fi
+	ensure_firewall_network "${INTERFACE}"
+	[ "${pdp_type}" = 'ip' ] || ensure_firewall_network "${INTERFACE6}"
+
+	if [ "${CONFIG_CHANGED}" = '1' ]; then
+		uci -q commit network
+		/etc/init.d/network reload >/dev/null 2>&1 || true
+		log_message "network synchronized device=${netdev} protocol=${pdp_type} metric=${EFFECTIVE_METRIC}"
+	fi
+	if [ "${FIREWALL_CHANGED}" = '1' ]; then
+		uci -q commit firewall
+		/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	fi
+}
+
+interface_up() {
+	local name="$1" output
+	output="$(ubus call "network.interface.${name}" status 2>/dev/null || true)"
+	[ "$(printf '%s' "${output}" | jsonfilter -e '@.up' 2>/dev/null)" = 'true' ]
+}
+
+bring_up() {
+	local pdp_type
+	pdp_type="$(config_value pdp_type ipv4v6)"
+	ifup "${INTERFACE}" >/dev/null 2>&1 || true
+	case "${pdp_type}" in
+		ip) ifdown "${INTERFACE6}" >/dev/null 2>&1 || true ;;
+		*)
+			if [ "$(uci -q get network.${INTERFACE6}.auto 2>/dev/null || echo 1)" = '0' ]; then
+				ifdown "${INTERFACE6}" >/dev/null 2>&1 || true
+			else
+				ifup "${INTERFACE6}" >/dev/null 2>&1 || true
+			fi
+			;;
+	esac
+}
+
+bring_down() {
+	ifdown "${INTERFACE6}" >/dev/null 2>&1 || true
+	ifdown "${INTERFACE}" >/dev/null 2>&1 || true
+}
+
+sync_manager() {
+	local info state netdev
+	info="$(mt5700m_usb_info || true)"
+	state="${info%%|*}"
+	if [ "${state}" != 'normal' ]; then
+		bring_down
+		[ -n "${info}" ] && log_message "module unavailable state=${state}" || true
+		return 0
+	fi
+	mt5700m_bind_network_driver || log_message 'unable to bind MT5700M NCM interface'
+	mt5700m_pcui_port >/dev/null 2>&1 || {
+		mt5700m_bind_serial_driver || true
+		sleep 1
+	}
+	netdev="$(mt5700m_netdev || true)"
+	[ -n "${netdev}" ] || {
+		log_message 'normal-mode module has no network interface'
+		return 1
+	}
+	ensure_network "${netdev}"
+	if [ "$(config_value enabled 1)" = '1' ]; then
+		interface_up "${INTERFACE}" || bring_up
+	else
+		bring_down
+	fi
+}
+
+apply_profile() {
+	local pdp protocol apn username password auth auth_code
+	pdp="$(config_value pdp_type ipv4v6)"
+	case "${pdp}" in ip) protocol='IP' ;; ipv6) protocol='IPV6' ;; *) protocol='IPV4V6' ;; esac
+	apn="$(config_value apn '')"
+	username="$(config_value username '')"
+	password="$(config_value password '')"
+	auth="$(config_value auth none)"
+	case "${auth}" in pap) auth_code=1 ;; chap) auth_code=2 ;; *) auth_code=0 ;; esac
+	/usr/sbin/mt5700m-at advanced-set autodial 1 1 "${protocol}" "${apn}" "${username}" "${password}" "${auth_code}" >/dev/null
+}
+
+connect_manager() {
+	CONFIG_CHANGED=0
+	set_if_changed mt5700m.connection.enabled 1
+	[ "${CONFIG_CHANGED}" = '0' ] || uci -q commit mt5700m
+	sync_manager || return 1
+	apply_profile || log_message 'module profile was not changed; continuing with retained profile'
+	bring_up
+	log_message 'connection enabled'
+}
+
+disconnect_manager() {
+	CONFIG_CHANGED=0
+	set_if_changed mt5700m.connection.enabled 0
+	[ "${CONFIG_CHANGED}" = '0' ] || uci -q commit mt5700m
+	bring_down
+	log_message 'connection disabled'
+}
+
+redial_manager() {
+	bring_down
+	sleep 1
+	CONFIG_CHANGED=0
+	set_if_changed mt5700m.connection.enabled 1
+	[ "${CONFIG_CHANGED}" = '0' ] || uci -q commit mt5700m
+	sync_manager || return 1
+	apply_profile || log_message 'module profile was not changed during redial'
+	bring_up
+	log_message 'connection recycled'
+}
+
+status_json() {
+	local info state rest product slot netdev atport status4 status6 up4 up6 carrier
+	. /usr/share/libubox/jshn.sh
+	info="$(mt5700m_usb_info || true)"
+	state="${info%%|*}"
+	[ -n "${info}" ] || state='absent'
+	rest="${info#*|}"; product="${rest%%|*}"; slot="${rest#*|}"
+	netdev="$(mt5700m_netdev || true)"
+	atport="$(mt5700m_pcui_port || true)"
+	status4="$(ubus call "network.interface.${INTERFACE}" status 2>/dev/null || true)"
+	status6="$(ubus call "network.interface.${INTERFACE6}" status 2>/dev/null || true)"
+	up4="$(bool_value "$(printf '%s' "${status4}" | jsonfilter -e '@.up' 2>/dev/null)")"
+	up6="$(bool_value "$(printf '%s' "${status6}" | jsonfilter -e '@.up' 2>/dev/null)")"
+	carrier=0
+	[ -n "${netdev}" ] && [ "$(cat "/sys/class/net/${netdev}/carrier" 2>/dev/null || echo 0)" = '1' ] && carrier=1
+	json_init
+	json_add_boolean running "$([ "$(config_value enabled 1)" = '1' ] && [ "${state}" = 'normal' ] && echo 1 || echo 0)"
+	json_add_boolean connected "$({ [ "${up4}" = '1' ] || [ "${up6}" = '1' ]; } && [ "${carrier}" = '1' ] && echo 1 || echo 0)"
+	json_add_boolean ipv4_up "${up4}"
+	json_add_boolean ipv6_up "${up6}"
+	json_add_boolean carrier "${carrier}"
+	json_add_string usb_state "${state}"
+	json_add_string usb_pid "${product}"
+	json_add_string usb_slot "${slot}"
+	json_add_string at_port "${atport}"
+	json_add_string network "${netdev}"
+	json_add_string interface "${INTERFACE}"
+	json_add_string interface6 "${INTERFACE6}"
+	json_add_string mode 'NCM / ECM'
+	json_add_string metric "$(uci -q get network.${INTERFACE}.metric 2>/dev/null || config_value metric 50)"
+	json_dump
+}
+
+monitor_manager() {
+	while :; do
+		if acquire_lock; then
+			sync_manager >/dev/null 2>&1 || true
+			release_lock
+		fi
+		sleep 15
+	done
+}
+
+action="${1:-status-json}"
+case "${action}" in
+	monitor) monitor_manager ;;
+	status|status-json) status_json ;;
+	log) tail -n 120 "${LOG_FILE}" 2>/dev/null || true ;;
+	*)
+		acquire_lock_wait || { echo 'manager is busy' >&2; exit 2; }
+		trap release_lock EXIT INT TERM
+		case "${action}" in
+			sync) sync_manager ;;
+			connect) connect_manager ;;
+			disconnect) disconnect_manager ;;
+			redial) redial_manager ;;
+			down) bring_down ;;
+			*) echo "Usage: $0 {status-json|sync|connect|disconnect|redial|log|monitor}" >&2; exit 64 ;;
+		esac
+		;;
+esac

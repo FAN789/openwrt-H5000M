@@ -2,10 +2,10 @@
 	"luci-app-mt5700m": {
 		"description": "Grant access to MT5700M management",
 		"read": {
-			"uci": [ "mt5700m", "qmodem" ],
+			"uci": [ "mt5700m" ],
 			"ubus": {
 				"file": [ "exec" ],
-				"qmodem": [ "base_info", "cell_info", "dial_status", "get_dial_log" ],
+				"mt5700m": [ "status", "log" ],
 				"network.device": [ "status" ]
 			},
 			"file": {
@@ -13,10 +13,10 @@
 			}
 		},
 		"write": {
-			"uci": [ "mt5700m", "qmodem" ],
+			"uci": [ "mt5700m" ],
 			"ubus": {
 				"file": [ "exec" ],
-				"qmodem": [ "modem_dial", "modem_hang", "modem_redial" ]
+				"mt5700m": [ "connect", "disconnect", "redial", "sync" ]
 			},
 			"file": {
 				"/usr/sbin/mt5700m-at": [ "exec" ]

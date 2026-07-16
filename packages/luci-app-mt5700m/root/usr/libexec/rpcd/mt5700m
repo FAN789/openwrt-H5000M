@@ -1,0 +1,30 @@
+#!/bin/sh
+
+. /usr/share/libubox/jshn.sh
+
+case "$1" in
+	list)
+		cat <<'EOF'
+{"status":{},"connect":{},"disconnect":{},"redial":{},"log":{},"sync":{}}
+EOF
+		;;
+	call)
+		case "$2" in
+			status) exec /usr/sbin/mt5700m-manager status-json ;;
+			log)
+				json_init
+				json_add_string log "$(/usr/sbin/mt5700m-manager log)"
+				json_dump
+				;;
+			connect|disconnect|redial|sync)
+				if /usr/sbin/mt5700m-manager "$2"; then
+					/usr/sbin/mt5700m-manager status-json
+				else
+					exit 1
+				fi
+				;;
+			*) exit 1 ;;
+		esac
+		;;
+	*) exit 1 ;;
+esac

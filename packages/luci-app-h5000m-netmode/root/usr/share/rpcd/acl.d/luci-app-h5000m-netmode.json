@@ -5,13 +5,13 @@
 			"file": {
 				"/usr/sbin/h5000m-netmode": [ "exec" ]
 			},
-			"uci": [ "h5000m_netmode", "network", "qmodem" ]
+			"uci": [ "h5000m_netmode", "network", "mt5700m" ]
 		},
 		"write": {
 			"file": {
 				"/usr/sbin/h5000m-netmode": [ "exec" ]
 			},
-			"uci": [ "h5000m_netmode", "network", "qmodem" ]
+			"uci": [ "h5000m_netmode", "network", "mt5700m" ]
 		}
 	}
 }

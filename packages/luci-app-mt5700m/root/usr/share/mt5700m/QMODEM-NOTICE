@@ -1,0 +1,10 @@
+This application contains an independently reduced, MT5700M-specific
+implementation of behavior studied from FUjr/QModem at commit
+6f84b7935921cce6a215171af5e93cad62f8a5a5.
+
+QModem is distributed under the Mozilla Public License 2.0 with an additional
+restriction prohibiting commercial use. The complete upstream license text and
+source are available from https://github.com/FUjr/QModem.
+
+The integrated MT5700M manager retains the relevant attribution and is intended
+for personal, non-commercial use.

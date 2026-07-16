@@ -5,8 +5,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_DIR="${ROOT_DIR}/openwrt"
 CONFIG_FILE="${SRC_DIR}/.config"
 
-INCLUDE_QMODEM_ORIGINAL="${INCLUDE_QMODEM_ORIGINAL:-${INCLUDE_QMODEM:-false}}"
-INCLUDE_QMODEM_NEXT="${INCLUDE_QMODEM_NEXT:-false}"
 INCLUDE_PASSWALL2="${INCLUDE_PASSWALL2:-${INCLUDE_PASSWALL:-false}}"
 INCLUDE_MOSDNS="${INCLUDE_MOSDNS:-false}"
 INCLUDE_UPNP="${INCLUDE_UPNP:-false}"
@@ -90,55 +88,13 @@ require_config "CONFIG_PACKAGE_luci-app-h5000m-netmode"
 if [ "${INCLUDE_MT5700M}" = "true" ]; then
   require_config "CONFIG_PACKAGE_luci-app-mt5700m"
   optional_config "CONFIG_PACKAGE_luci-i18n-mt5700m-zh-cn"
-fi
-
-if [ "${INCLUDE_QMODEM_ORIGINAL}" = "true" ] && [ "${INCLUDE_QMODEM_NEXT}" = "true" ]; then
-  echo "冲突：QModem 原版和 QModem Next 只能二选一。"
-  missing=1
-fi
-
-if [ "${INCLUDE_QMODEM_ORIGINAL}" = "true" ]; then
-  require_config "CONFIG_PACKAGE_qmodem"
-  require_config "CONFIG_PACKAGE_luci-app-qmodem"
-  optional_config "CONFIG_PACKAGE_luci-i18n-qmodem-zh-cn"
-  reject_config "CONFIG_PACKAGE_luci-app-qmodem-next"
-  reject_config "CONFIG_PACKAGE_luci-app-qmodem-monitor"
-  reject_config "CONFIG_PACKAGE_luci-app-qmodem-ttlfw4"
-  require_config "CONFIG_PACKAGE_modem_scan"
   require_config "CONFIG_PACKAGE_ubus-at-daemon"
-  require_config "CONFIG_PACKAGE_tom_modem"
   require_config "CONFIG_PACKAGE_sms-tool_q"
-  require_config "CONFIG_PACKAGE_qfirehose"
-  require_config "CONFIG_PACKAGE_ndisc6"
-  require_config "CONFIG_PACKAGE_quectel-CM-5G-M"
-  require_config "CONFIG_PACKAGE_kmod-pcie_mhi"
-  require_config "CONFIG_PACKAGE_kmod-qmi_wwan_q"
-  require_config "CONFIG_PACKAGE_kmod-qmi_wwan_f"
-  require_config "CONFIG_PACKAGE_kmod-qmi_wwan_s"
-fi
-
-if [ "${INCLUDE_QMODEM_NEXT}" = "true" ]; then
-  require_config "CONFIG_PACKAGE_qmodem"
+  reject_config "CONFIG_PACKAGE_qmodem"
   reject_config "CONFIG_PACKAGE_luci-app-qmodem"
-  require_config "CONFIG_PACKAGE_luci-app-qmodem-next"
-  require_config "CONFIG_PACKAGE_luci-app-qmodem-monitor"
-  require_config "CONFIG_PACKAGE_luci-app-qmodem-ttlfw4"
-  optional_config "CONFIG_PACKAGE_luci-i18n-qmodem-next-zh-cn"
-  optional_config "CONFIG_PACKAGE_luci-i18n-qmodem-monitor-zh-cn"
-  optional_config "CONFIG_PACKAGE_luci-i18n-qmodem-ttlfw4-zh-cn"
-  require_config "CONFIG_PACKAGE_qmodem_monitor"
-  require_config "CONFIG_PACKAGE_modem_scan"
-  require_config "CONFIG_PACKAGE_ubus-at-daemon"
-  require_config "CONFIG_PACKAGE_tom_modem"
-  require_config "CONFIG_PACKAGE_sms-tool_q"
-  require_config "CONFIG_PACKAGE_sms-forwarder-next"
-  require_config "CONFIG_PACKAGE_qfirehose"
-  require_config "CONFIG_PACKAGE_ndisc6"
-  require_config "CONFIG_PACKAGE_quectel-CM-5G-M"
-  require_config "CONFIG_PACKAGE_kmod-pcie_mhi"
-  require_config "CONFIG_PACKAGE_kmod-qmi_wwan_q"
-  require_config "CONFIG_PACKAGE_kmod-qmi_wwan_f"
-  require_config "CONFIG_PACKAGE_kmod-qmi_wwan_s"
+  reject_config "CONFIG_PACKAGE_luci-app-qmodem-next"
+  reject_config "CONFIG_PACKAGE_modem_scan"
+  reject_config "CONFIG_PACKAGE_tom_modem"
 fi
 
 if [ "${INCLUDE_UPNP}" = "true" ]; then

@@ -7,7 +7,7 @@
 		}
 	},
 	"admin/modem/mt5700m": {
-		"title": "5G Modem",
+		"title": "MT5700M Module",
 		"order": 20,
 		"action": {
 			"type": "firstchild"
@@ -26,12 +26,12 @@
 		}
 	},
 	"admin/modem/mt5700m/connection": {
-		"title": "Connection and Dialing",
+		"title": "Mobile Data",
 		"order": 20,
 		"action": { "type": "view", "path": "mt5700m/connection" }
 	},
 	"admin/modem/mt5700m/network": {
-		"title": "Network and Cell Info",
+		"title": "Network and Cells",
 		"order": 30,
 		"action": { "type": "view", "path": "mt5700m/network" }
 	},
@@ -41,7 +41,7 @@
 		"action": { "type": "view", "path": "mt5700m/sms" }
 	},
 	"admin/modem/mt5700m/system": {
-		"title": "System and FOTA",
+		"title": "Device and SIM",
 		"order": 50,
 		"action": { "type": "view", "path": "mt5700m/system" }
 	},
@@ -51,13 +51,14 @@
 		"action": { "type": "view", "path": "mt5700m/terminal" }
 	},
 	"admin/modem/mt5700m/advanced": {
-		"title": "Advanced Settings",
+		"title": "Hardware",
 		"order": 60,
 		"action": { "type": "view", "path": "mt5700m/advanced" }
 	},
 	"admin/modem/mt5700m/settings": {
-		"title": "Manager Settings",
-		"order": 80,
-		"action": { "type": "view", "path": "mt5700m/settings" }
+		"action": { "type": "view", "path": "mt5700m/settings" },
+		"depends": {
+			"acl": [ "luci-app-mt5700m" ]
+		}
 	}
 }

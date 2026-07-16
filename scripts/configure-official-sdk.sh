@@ -53,8 +53,6 @@ for package in \
 	cp -a "${ROOT_DIR}/packages/${package}" "${SDK_DIR}/package/h5000m-custom/"
 done
 
-bash "${ROOT_DIR}/scripts/patch-qmodem-hotplug.sh" "${SDK_DIR}"
-
 rm -rf "${SDK_DIR}/tmp"
 rm -f "${SDK_DIR}/.config" "${SDK_DIR}/.config.old"
 cat > "${SDK_DIR}/.config" <<'EOF'
@@ -68,13 +66,13 @@ CONFIG_PACKAGE_luci-app-h5000m-fancontrol=m
 CONFIG_PACKAGE_luci-app-h5000m-netmode=m
 CONFIG_PACKAGE_luci-app-mt5700m=m
 CONFIG_LUCI_LANG_zh_Hans=y
-CONFIG_PACKAGE_qmodem=m
-CONFIG_PACKAGE_tom_modem_ENABLE_UBUS_DAEMON=y
+CONFIG_PACKAGE_ubus-at-daemon=m
+CONFIG_PACKAGE_sms-tool_q=m
 # CONFIG_PACKAGE_luci-app-qmodem is not set
 # CONFIG_PACKAGE_luci-app-qmodem-next is not set
-# CONFIG_PACKAGE_luci-app-qmodem_INCLUDE_ADD_PCI_SUPPORT is not set
-# CONFIG_PACKAGE_luci-app-qmodem_INCLUDE_ADD_MTK_T7XX_SUPPORT is not set
-# CONFIG_PACKAGE_luci-app-qmodem_INCLUDE_ADD_QFIREHOSE_SUPPORT is not set
+# CONFIG_PACKAGE_qmodem is not set
+# CONFIG_PACKAGE_modem_scan is not set
+# CONFIG_PACKAGE_tom_modem is not set
 EOF
 
 make -C "${SDK_DIR}" defconfig
@@ -93,10 +91,7 @@ for package in \
 	luci-app-h5000m-fancontrol \
 	luci-app-h5000m-netmode \
 	luci-app-mt5700m \
-	qmodem \
-	modem_scan \
 	ubus-at-daemon \
-	tom_modem \
 	sms-tool_q; do
 	grep -qx "CONFIG_PACKAGE_${package}=m" "${SDK_DIR}/.config"
 done

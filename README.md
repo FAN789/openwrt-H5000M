@@ -32,19 +32,19 @@ https://github.com/openwrt/openwrt/pull/21398
 1. 拉取指定版本的 OpenWrt 官方源码。
 2. 验证所选 OpenWrt 源码已经包含官方 H5000M 设备支持。
 3. 使用 `configs/h5000m.seed` 选择 MediaTek Filogic / H5000M 目标。
-4. 按 workflow 选项集成 QModem、PassWall2、MosDNS、UPnP、HomeProxy、vnStat2、MT5700M 管理页面。
+4. 按 workflow 选项集成 MT5700M 专用管理器、PassWall2、MosDNS、UPnP、HomeProxy 和 vnStat2。
 5. 通过 GitHub Actions 或本地 Linux runner 编译固件。
 
 ## 插件来源
 
-- QModem：`FUjr/QModem`，默认锁定在 `configs/qmodem.ref` 中经过 H5000M 实机验证的提交
+- AT/SMS 传输组件：从 `FUjr/QModem` 的锁定提交构建 `ubus-at-daemon` 与 `sms-tool_q`；不构建或安装 QModem 主程序
 - PassWall2：`kenzok8/small-package`
 - MosDNS / luci-app-mosdns：`kenzok8/small-package`
 - HomeProxy：`kenzok8/small-package`
 - UPnP：OpenWrt 官方 feeds
 - ttyd / luci-app-ttyd：OpenWrt 官方 feeds
 - vnStat2 / luci-app-vnstat2：OpenWrt 官方 feeds
-- MT5700M 管理页面：本仓库 `packages/luci-app-mt5700m`，与锁定版本的 QModem 后端共同组成统一管理器（不嵌入模块 WebUI）
+- MT5700M 模组管理：本仓库 `packages/luci-app-mt5700m`，内置专用发现、NCM 驱动仲裁、双栈接口、拨号监督和 RPC 服务（不嵌入模块 WebUI）
 
 勾选 PassWall2、MosDNS、HomeProxy 任意一个时，会自动添加 `kenzok8/small-package`。
 
@@ -96,8 +96,6 @@ https://github.com/openwrt/openwrt/pull/21398
 
 - `openwrt_ref`: 默认使用 `configs/openwrt.ref` 中已验证的官方提交；也可显式填写后续包含官方 H5000M 支持的提交、分支或发行标签
 - `runner_type`: `github-hosted` 或 `self-hosted`
-- `qmodem_original`: 默认开启，使用 `luci-app-qmodem` 原版界面
-- `qmodem_next`: 默认关闭，不要和 `qmodem_original` 同时开启
 - `upnp`: 默认开启
 - `passwall2`: 默认开启
 - `homeproxy`: 默认关闭
@@ -120,8 +118,7 @@ openwrt/bin/targets/mediatek/filogic
 请在 Linux、WSL2 或 Linux 编译机上运行：
 
 ```sh
-INCLUDE_QMODEM_ORIGINAL=true \
-INCLUDE_QMODEM_NEXT=false \
+INCLUDE_MT5700M=true \
 INCLUDE_PASSWALL2=true \
 INCLUDE_MOSDNS=true \
 INCLUDE_UPNP=true \
@@ -132,8 +129,6 @@ cd openwrt
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
-INCLUDE_QMODEM_ORIGINAL=true \
-INCLUDE_QMODEM_NEXT=false \
 INCLUDE_PASSWALL2=true \
 INCLUDE_MOSDNS=true \
 INCLUDE_UPNP=true \
@@ -154,7 +149,7 @@ make -j"$(nproc)"
 
 1. `scripts/build-official-base-local.sh` 使用官方 H5000M ImageBuilder 生成仅包含中文 LuCI、常用工具和安全首启默认值的 sysupgrade 固件。
 2. `scripts/configure-official-sdk.sh SDK_DIR` 配置与基线完全匹配的官方 SDK，并使用持久化 H5000M APK 密钥构建插件。
-3. `scripts/build-offline-plugin-repo.sh SDK_DIR BASE_ARTIFACT_DIR OUTPUT_DIR` 收集风扇、出口策略、MT5700M/QModem 及其依赖，验签、创建仓库索引，并在解包后的全新官方基线中执行断网安装模拟。
+3. `scripts/build-offline-plugin-repo.sh SDK_DIR BASE_ARTIFACT_DIR OUTPUT_DIR` 收集风扇、出口策略、MT5700M 专用管理器及其最小依赖，验签、创建仓库索引，并在解包后的全新官方基线中执行断网安装模拟。
 4. 全新设备安装插件时，直接使用交付目录中的 `packages.adb`；不得添加临时不可信参数。
 
 ## 默认设置
@@ -166,8 +161,8 @@ make -j"$(nproc)"
 - WiFi：沿用官方 OpenWrt 首启策略，默认不启用、不预置统一 SSID 或共享密码
 - 首次配置：通过有线 LAN 登录 LuCI，选择所在国家/地区并为各频段设置独立的强密码后再启用无线
 - 有线 WAN 优先：`wan` / `wan6` metric 为 `10`
-- 5G SIM 备用：QModem 生成的 `USB` / `USBv6` metric 为 `50`
-- 首次启动时清理固件内的 QModem、small_package 和 video 软件源条目
+- 5G SIM 备用：专用管理器生成的 `MT5700M` / `MT5700Mv6` metric 为 `50`
+- 首次启动时清理构建期第三方、small_package 和 video 软件源条目
 
 离线插件仓库提供 `luci-app-h5000m-netmode`，可在 LuCI 的“网络 / 出口优先级”中切换有线 WAN 和 5G 模块的优先级。
 
@@ -177,7 +172,7 @@ make -j"$(nproc)"
 
 管理面默认将 HTTP 跳转到 HTTPS。SSH 密码登录默认关闭，避免设备在尚未完成首次设密时暴露空密码管理入口；需要 SSH 时应先配置管理员密码和公钥，再显式启用相应认证方式。
 
-离线插件仓库提供 `luci-app-mt5700m`，在 LuCI 的“移动网络 / 5G 模组”中统一提供概览、连接与拨号、网络与小区信息、频段锁定、短信、系统/FOTA、高级设置和 AT 控制台。QModem 继续负责模组发现、串口仲裁与拨号，MT5700M 页面负责设备专属能力和统一交互；网络 AT 仅作为回退，不嵌入或依赖模块 WebUI。安装统一管理器后不再显示重复的旧 QModem 菜单，但 QModem 后端服务保持运行。
+离线插件仓库提供 `luci-app-mt5700m`，在 LuCI 的“移动网络 / MT5700M 模组”中按用户任务提供概览、移动数据、网络与小区、短信、设备与 SIM、硬件、AT 控制台和管理器设置。拨号、IPv4/IPv6 会话、DNS、模组流量计数、详细数据会话、IP 直通与 PDP 上下文集中在“移动数据”；接入顺序、漫游、服务域、WCDMA/LTE 频段、5G 架构、MCS、QCI、NR 发射功率、SSB、锁频锁小区集中在“网络与小区”；ICCID/IMSI、网络时间、SIM PIN、SIM 激活/卡槽、温保门限与日志、FOTA、恢复出厂和受保护的设备身份实验室集中在“设备与 SIM”；只有 USB、PCIe、SIM 热插拔和底层接口形态保留在“硬件”。页面与参数语义按鼎桥原厂 AT、USB 和 Linux 驱动文档规范，正常运行时严格识别 `3466:3301`，并通过 PCUI 描述符定位 AT 端口；`3302` 升级模式和 `3303` Dump 模式仅用于状态诊断，不会启动拨号。插件自己的 `mt5700m-manager` 负责 NCM/Option 驱动仲裁、热插拔、IPv4/IPv6 接口、路由策略、连接/断开/重拨和启动恢复；不安装 QModem 主程序、通用扫描器、其他厂商脚本或 QMI/MBIM/PCIe 拨号组件。`ubus-at-daemon` 与 `sms_tool_q` 作为无界面的最小传输依赖自动安装。
 
 ## 本地 Runner
 

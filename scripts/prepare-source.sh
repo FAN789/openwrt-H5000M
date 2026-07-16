@@ -8,8 +8,6 @@ REF="${1:-${OPENWRT_REF:-${LOCKED_REF}}}"
 QMODEM_REF="$(tr -d '[:space:]' < "${ROOT_DIR}/configs/qmodem.ref")"
 REPO_URL="${OPENWRT_REPO:-https://github.com/openwrt/openwrt.git}"
 
-INCLUDE_QMODEM_ORIGINAL="${INCLUDE_QMODEM_ORIGINAL:-${INCLUDE_QMODEM:-false}}"
-INCLUDE_QMODEM_NEXT="${INCLUDE_QMODEM_NEXT:-false}"
 INCLUDE_PASSWALL2="${INCLUDE_PASSWALL2:-${INCLUDE_PASSWALL:-false}}"
 INCLUDE_MOSDNS="${INCLUDE_MOSDNS:-false}"
 INCLUDE_UPNP="${INCLUDE_UPNP:-false}"
@@ -90,13 +88,8 @@ if [ "${INCLUDE_PASSWALL2}" = "true" ] || \
   need_small_package=true
 fi
 
-if [ "${INCLUDE_QMODEM_ORIGINAL}" = "true" ] && [ "${INCLUDE_QMODEM_NEXT}" = "true" ]; then
-  echo "QModem 原版和 QModem Next 只能二选一，请关闭其中一个。"
-  exit 1
-fi
-
-if [ "${INCLUDE_QMODEM_ORIGINAL}" = "true" ] || [ "${INCLUDE_QMODEM_NEXT}" = "true" ]; then
-  echo "添加 QModem 第三方 feed：FUjr/QModem"
+if [ "${INCLUDE_MT5700M}" = "true" ]; then
+  echo "添加 MT5700M AT/SMS 传输组件 feed：FUjr/QModem"
   append_feed_once "src-git qmodem https://github.com/FUjr/QModem.git^${QMODEM_REF}"
 fi
 
@@ -114,14 +107,7 @@ echo "写入 H5000M 自定义软件包"
 rm -rf "${SRC_DIR}/package/h5000m-custom"
 mkdir -p "${SRC_DIR}/package/h5000m-custom"
 cp -a "${ROOT_DIR}/packages/." "${SRC_DIR}/package/h5000m-custom/"
-rm -rf "${SRC_DIR}/package/h5000m-custom/luci-app-mt5700m"
-
-if [ "${INCLUDE_MT5700M}" = "true" ]; then
-	mt5700m_tmp="$(mktemp -d)"
-	git clone --depth=1 https://github.com/FAN789/luci-app-mt5700m.git "${mt5700m_tmp}/feed"
-	cp -a "${mt5700m_tmp}/feed/luci-app-mt5700m" "${SRC_DIR}/package/h5000m-custom/"
-	rm -rf "${mt5700m_tmp}"
-fi
+[ "${INCLUDE_MT5700M}" = "true" ] || rm -rf "${SRC_DIR}/package/h5000m-custom/luci-app-mt5700m"
 
 echo "OpenWrt 官方源码已准备完成：${SRC_DIR}"
 echo "当前源码版本：${REF}"
@@ -129,7 +115,7 @@ echo "后续本地编译步骤："
 echo "  cd ${SRC_DIR}"
 echo "  ./scripts/feeds update -a"
 echo "  ./scripts/feeds install -a"
-echo "  INCLUDE_QMODEM_ORIGINAL=${INCLUDE_QMODEM_ORIGINAL} INCLUDE_QMODEM_NEXT=${INCLUDE_QMODEM_NEXT} INCLUDE_PASSWALL2=${INCLUDE_PASSWALL2} INCLUDE_MOSDNS=${INCLUDE_MOSDNS} INCLUDE_UPNP=${INCLUDE_UPNP} INCLUDE_HOMEPROXY=${INCLUDE_HOMEPROXY} bash ${ROOT_DIR}/scripts/apply-package-options.sh"
+echo "  INCLUDE_MT5700M=${INCLUDE_MT5700M} INCLUDE_PASSWALL2=${INCLUDE_PASSWALL2} INCLUDE_MOSDNS=${INCLUDE_MOSDNS} INCLUDE_UPNP=${INCLUDE_UPNP} INCLUDE_HOMEPROXY=${INCLUDE_HOMEPROXY} bash ${ROOT_DIR}/scripts/apply-package-options.sh"
 echo "  make defconfig"
 echo "  make download -j\$(nproc)"
 echo "  make -j\$(nproc)"

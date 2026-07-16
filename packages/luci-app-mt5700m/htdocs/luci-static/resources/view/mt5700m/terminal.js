@@ -2,6 +2,7 @@
 'require view';
 'require fs';
 'require ui';
+'require mt5700m.controls as controls';
 
 return view.extend({
 	styleNode: function() {
@@ -13,6 +14,7 @@ return view.extend({
 			'.mt5700m-terminal-row{display:flex;gap:8px;align-items:center;margin-bottom:14px}',
 			'.mt5700m-terminal-row input{flex:1;font-family:monospace}',
 			'.mt5700m-quick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}',
+			'.mt-terminal-saved-item{display:inline-flex}.mt-terminal-saved-item .btn:first-child{border-radius:4px 0 0 4px}.mt-terminal-saved-item .btn:last-child{border-radius:0 4px 4px 0;margin-left:-1px;color:#a33}',
 			'.mt5700m-output{white-space:pre-wrap;word-break:break-word;background:#111820;color:#d7e1ea;border-radius:9px;padding:15px;min-height:320px;max-height:560px;overflow:auto;font-family:monospace;font-size:13px;line-height:1.55}',
 			'@media(max-width:680px){.mt5700m-terminal-row{flex-wrap:wrap}.mt5700m-terminal-row input{flex-basis:100%}.mt-terminal-hero{padding:20px}}'
 		].join(''));
@@ -58,6 +60,39 @@ return view.extend({
 		}, label);
 	},
 
+	loadSaved: function() {
+		try { return JSON.parse(window.localStorage.getItem('mt5700m.at.saved') || '[]'); }
+		catch (e) { return []; }
+	},
+
+	saveCommand: function(input, container, output) {
+		var command = (input.value || '').trim(), self = this;
+		if (!command)
+			return ui.addNotification(null, E('p', {}, _('Command is empty.')), 'warning');
+		var label = window.prompt(_('Name this command'), command);
+		if (!label)
+			return;
+		var saved = this.loadSaved().filter(function(item) { return item.command !== command; });
+		saved.push({ label:label.substring(0, 40), command:command });
+		window.localStorage.setItem('mt5700m.at.saved', JSON.stringify(saved.slice(-20)));
+		this.renderSaved(container, input, output);
+	},
+
+	renderSaved: function(container, input, output) {
+		var self = this, saved = this.loadSaved();
+		container.innerHTML = '';
+		saved.forEach(function(item) {
+			container.appendChild(E('span', { 'class':'mt-terminal-saved-item' }, [
+				self.quickButton(item.label, item.command, input, output),
+				E('button', { 'type':'button', 'class':'btn', 'title':_('Remove saved command'), 'click':function() {
+					window.localStorage.setItem('mt5700m.at.saved', JSON.stringify(self.loadSaved().filter(function(entry) { return entry.command !== item.command; })));
+					self.renderSaved(container, input, output);
+				} }, '×')
+			]));
+		});
+		container.style.display = saved.length ? '' : 'none';
+	},
+
 	render: function() {
 		var input = E('input', {
 			'type': 'text',
@@ -65,17 +100,20 @@ return view.extend({
 			'placeholder': _('Enter AT command, for example AT^HCSQ?')
 		});
 		var output = E('pre', { 'class': 'mt5700m-output' }, _('Ready.'));
+		var saved = E('div', { 'class':'mt5700m-quick' });
 		var self = this;
 
 		input.addEventListener('keydown', function(ev) {
 			if (ev.key === 'Enter')
 				self.sendCommand(output, input);
 		});
+		window.setTimeout(function() { self.renderSaved(saved, input, output); }, 0);
 
-		return E('div', {}, [
+		return E('div', { 'class':'mt-terminal mt-ui-page' }, [
 			this.styleNode(),
-			E('section', { 'class': 'mt-terminal-hero' }, [ E('h2', {}, _('AT command console')), E('p', {}, _('Diagnostic console for advanced users. Commands are sent directly to the MT5700M and are not automatically validated.')) ]),
-			E('section', { 'class': 'mt-terminal-card' }, [
+			controls.styleNode(),
+			E('section', { 'class': 'mt-terminal-hero mt-ui-hero' }, [ E('div', {}, [ E('h2', {}, _('MT5700M AT command console')), E('p', {}, _('Diagnostic console for advanced users. Commands are sent directly to the MT5700M and are not automatically validated.')) ]) ]),
+			E('section', { 'class': 'mt-terminal-card mt-ui-card' }, [
 			E('div', { 'class': 'mt-terminal-warning' }, _('Use query commands whenever possible. Configuration and reset commands may interrupt mobile connectivity.')),
 			E('div', { 'class': 'mt5700m-terminal-row' }, [
 				input,
@@ -91,6 +129,7 @@ return view.extend({
 						output.textContent = '';
 					}
 				}, _('Clear'))
+				,E('button', { 'class':'btn', 'click':function() { self.saveCommand(input, saved, output); } }, _('Save command'))
 			]),
 			E('div', { 'class': 'mt5700m-quick' }, [
 				this.quickButton('AT', 'AT', input, output),
@@ -103,6 +142,7 @@ return view.extend({
 				this.quickButton(_('NR Lock'), 'AT^NRFREQLOCK?', input, output),
 				this.quickButton(_('LTE Lock'), 'AT^LTEFREQLOCK?', input, output)
 			]),
+			saved,
 			output
 			])
 		]);

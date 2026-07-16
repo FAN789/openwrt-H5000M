@@ -1,5 +1,13 @@
 msgid ""
-msgstr "Content-Type: text/plain; charset=UTF-8\n"
+msgstr "Project-Id-Version: luci-app-mt5700m\n"
+"PO-Revision-Date: 2026-07-16 00:00+0800\n"
+"Last-Translator: H5000M Project\n"
+"Language-Team: Chinese Simplified\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 
 msgid "MT5700M Management"
 msgstr "MT5700M 管理"
@@ -266,7 +274,7 @@ msgid "Ethernet passthrough mode"
 msgstr "网口直通模式"
 
 msgid "Post-routing"
-msgstr "后路由"
+msgstr "转发模式"
 
 msgid "Frequency selection"
 msgstr "频段与小区选择"
@@ -1073,7 +1081,7 @@ msgid "IPv4 / IPv6"
 msgstr "IPv4 / IPv6"
 
 msgid "Route metric"
-msgstr "路由跃点"
+msgstr "路由优先级"
 
 msgid "Custom DNS"
 msgstr "自定义 DNS"
@@ -1204,6 +1212,24 @@ msgstr "聚合中"
 msgid "Radio link"
 msgstr "无线链路"
 
+msgid "SIM and subscription"
+msgstr "SIM 与签约信息"
+
+msgid "Local only"
+msgstr "仅本机"
+
+msgid "The phone number and device ID are displayed locally; subscription rates are network-authorized limits, not a live speed test."
+msgstr "手机号和设备标识仅在本机显示；签约速率是网络授权上限，并非实时测速。"
+
+msgid "Not stored on SIM"
+msgstr "SIM 未写入"
+
+msgid "Subscription downlink"
+msgstr "签约下行"
+
+msgid "Subscription uplink"
+msgstr "签约上行"
+
 msgid "Current mode"
 msgstr "当前模式"
 
@@ -1224,3 +1250,1124 @@ msgstr "%s 当前使用单载波。"
 
 msgid "Carrier aggregation is scheduled by the mobile network on demand. Only the primary carrier may appear while idle."
 msgstr "载波聚合由运营商网络按需调度；空闲时可能只显示主载波。"
+
+msgid "MT5700M Module"
+msgstr "MT5700M 模组"
+
+msgid "MT5700M Settings"
+msgstr "MT5700M 设置"
+
+msgid "MT5700M dedicated management"
+msgstr "MT5700M 专用管理"
+
+msgid "MT5700M dedicated"
+msgstr "MT5700M 专用配置"
+
+msgid "MT5700M connection"
+msgstr "MT5700M 连接"
+
+msgid "MT5700M advanced settings"
+msgstr "MT5700M 高级设置"
+
+msgid "Mobile Data"
+msgstr "移动数据"
+
+msgid "Network and Radio"
+msgstr "网络与无线"
+
+msgid "Module and Updates"
+msgstr "模组与更新"
+
+msgid "AT Diagnostics"
+msgstr "AT 诊断"
+
+msgid "Hardware and Interfaces"
+msgstr "硬件与接口"
+
+msgid "5G service capabilities"
+msgstr "5G 业务能力"
+
+msgid "5G service capabilities reported by the MT5700M. Keep the carrier defaults unless compatibility troubleshooting requires a change."
+msgstr "MT5700M 上报的 5G 业务能力。除非排查兼容性问题，否则建议保留运营商默认配置。"
+
+msgid "A module restart or airplane-mode cycle is required before this change takes effect."
+msgstr "此更改需要重启模组或切换一次飞行模式后才能生效。"
+
+msgid "Active SIM slot"
+msgstr "当前 SIM 卡槽"
+
+msgid "Apply DSS settings"
+msgstr "应用 DSS 设置"
+
+msgid "Apply VoNR mode"
+msgstr "应用 VoNR 模式"
+
+msgid "Apply carrier aggregation"
+msgstr "应用载波聚合设置"
+
+msgid "Apply module dialing"
+msgstr "应用模组拨号设置"
+
+msgid "Apply post-routing"
+msgstr "应用转发设置"
+
+msgid "Apply the selected VoNR capability?"
+msgstr "应用所选的 VoNR 能力设置？"
+
+msgid "Apply the selected carrier aggregation capability?"
+msgstr "应用所选的载波聚合能力设置？"
+
+msgid "Apply the selected physical SIM detection behavior?"
+msgstr "应用所选的实体 SIM 卡检测方式？"
+
+msgid "Apply these thermal-protection settings?"
+msgstr "应用这些温度保护设置？"
+
+msgid "Carrier aggregation and voice capability advertised by the module."
+msgstr "模组向网络声明的载波聚合和语音能力。"
+
+msgid "Changing an interface profile can interrupt both mobile data and module management. Record the current value before applying a change."
+msgstr "更改接口配置可能同时中断移动数据和模组管理。应用前请记录当前值。"
+
+msgid "Configure the OpenWrt dialing service and the MT5700M data path in one place. Saving the profile below updates the integrated host dialing service."
+msgstr "在同一页面配置 OpenWrt 拨号服务和 MT5700M 数据通路。保存下方配置会更新集成的主机拨号服务。"
+
+msgid "Current radio mode"
+msgstr "当前无线模式"
+
+msgid "DSS compatibility"
+msgstr "DSS 兼容性"
+
+msgid "Data interfaces"
+msgstr "数据接口"
+
+msgid "Force capability off is a compatibility override. Keep the factory capability for normal operation."
+msgstr "强制关闭能力仅用于兼容性处理，正常使用请保留出厂能力。"
+
+msgid "Hardware and interfaces"
+msgstr "硬件与接口"
+
+msgid "Inbound routing"
+msgstr "入站转发"
+
+msgid "Keep thermal protection enabled for normal operation."
+msgstr "正常使用时请保持温度保护开启。"
+
+msgid "Low-level USB, PCIe, SIM and thermal controls for the MT5700M. Normal operation does not require changes on this page."
+msgstr "MT5700M 的底层 USB、PCIe、SIM 和温度保护控制。正常使用无需修改本页设置。"
+
+msgid "MT5700M data path"
+msgstr "MT5700M 数据通路"
+
+msgid "Match the PHY profile to the Ethernet controller connected to the MT5700M."
+msgstr "使 PHY 配置与连接到 MT5700M 的以太网控制器相匹配。"
+
+msgid "Module dialing policy"
+msgstr "模组拨号策略"
+
+msgid "Module hardware behavior"
+msgstr "模组硬件行为"
+
+msgid "Module-side dialing and inbound-routing controls. Most OpenWrt installations should keep host dialing selected."
+msgstr "模组侧拨号和入站转发控制。大多数 OpenWrt 环境应保持主机拨号。"
+
+msgid "Optional module-side forwarding for devices connected behind the MT5700M data path."
+msgstr "为 MT5700M 数据通路下游设备提供的可选模组侧转发。"
+
+msgid "PCIe Ethernet"
+msgstr "PCIe 以太网"
+
+msgid "Post-routing and DMZ are mutually exclusive. Leave both disabled unless the module itself is providing the downstream LAN."
+msgstr "转发和 DMZ 互斥。除非由模组自身提供下游局域网，否则请保持两者关闭。"
+
+msgid "Profiles used by the host USB network driver and the optional PCIe Ethernet path."
+msgstr "主机 USB 网络驱动和可选 PCIe 以太网通路所使用的配置。"
+
+msgid "Radio preferences"
+msgstr "无线偏好"
+
+msgid "Restrict optional DSS capabilities only when required by the mobile network."
+msgstr "仅在移动网络明确需要时限制可选 DSS 能力。"
+
+msgid "Review the active SIM path and configure physical-card change detection."
+msgstr "查看当前 SIM 通路并配置实体卡插拔检测。"
+
+msgid "SIM detection and the built-in temperature-protection polling policy."
+msgstr "SIM 卡检测和内置温度保护轮询策略。"
+
+msgid "SIM hardware"
+msgstr "SIM 硬件"
+
+msgid "Select how the MT5700M firmware exposes its mobile data session."
+msgstr "选择 MT5700M 固件提供移动数据会话的方式。"
+
+msgid "Select the USB network-driver profile presented by the module."
+msgstr "选择模组向主机提供的 USB 网络驱动配置。"
+
+msgid "Select the documented relationship between the USB and Ethernet data paths."
+msgstr "选择手册定义的 USB 与以太网数据通路关系。"
+
+msgid "The module must restart or cycle airplane mode before the new routing path is used."
+msgstr "模组需要重启或切换一次飞行模式后才会使用新的转发通路。"
+
+msgid "The selected IPv4 host may be exposed to unsolicited traffic from the mobile network."
+msgstr "所选 IPv4 主机可能会暴露给来自移动网络的主动入站流量。"
+
+msgid "This selects a hardware PHY profile; it does not force Ethernet link negotiation speed."
+msgstr "此项选择硬件 PHY 配置，并不会强制以太网链路协商速率。"
+
+msgid "Use one dialing owner for each data path. With the integrated OpenWrt service, keep host dialing over USB selected to avoid repeated reconnects."
+msgstr "每条数据通路只能由一个服务负责拨号。使用集成 OpenWrt 服务时，请保持“主机通过 USB 拨号”，避免反复重连。"
+
+msgid "MT5700M AT command console"
+msgstr "MT5700M AT 命令控制台"
+
+msgid "MT5700M SYSTEM"
+msgstr "MT5700M 系统"
+
+msgid "Integrated dialing service"
+msgstr "集成拨号服务"
+
+msgid "No MT5700M module was found."
+msgstr "未发现 MT5700M 模组。"
+
+msgid "No MT5700M module was found. Check the module connection and dialing service."
+msgstr "未发现 MT5700M 模组，请检查模组连接和拨号服务。"
+
+msgid "Choose how the dedicated MT5700M manager communicates with the module. Auto mode is recommended and normally requires no changes."
+msgstr "选择 MT5700M 专用管理器与模组的通信方式。建议使用自动模式，通常无需修改。"
+
+msgid "Configure the MT5700M mobile data profile. Saving these fields updates the active integrated dialing service."
+msgstr "配置 MT5700M 移动数据参数；保存后会更新当前集成拨号服务。"
+
+msgid "Connection and dialing controls dedicated to the MT5700M module."
+msgstr "专用于 MT5700M 模组的连接与拨号控制。"
+
+msgid "Peak sensor temperature"
+msgstr "传感器最高温度"
+
+msgid "Dual connectivity"
+msgstr "双连接"
+
+msgid "%s dual connectivity is active."
+msgstr "%s 双连接已启用。"
+
+msgid "Carrier status"
+msgstr "载波状态"
+
+msgid "Configuration"
+msgstr "配置方式"
+
+msgid "Mobile network"
+msgstr "移动网络"
+
+msgid "Connection, Ethernet, radio and hardware controls defined by the MT5700M AT command manual."
+msgstr "按照 MT5700M AT 命令手册定义的连接、以太网、无线与硬件控制。"
+
+msgid "MT5700M automatic dialing"
+msgstr "MT5700M 自动拨号"
+
+msgid "Configure the automatic dialing policy defined by the MT5700M firmware."
+msgstr "配置 MT5700M 固件定义的自动拨号策略。"
+
+msgid "Use one dialing owner for each data path. Conflicting APN settings can cause repeated reconnects."
+msgstr "每条数据通路只应由一个服务负责拨号；APN 配置冲突可能导致反复重连。"
+
+msgid "Module internal dialing"
+msgstr "模组内部拨号"
+
+msgid "Host dialing over USB"
+msgstr "主机通过 USB 拨号"
+
+msgid "Host dialing over Ethernet"
+msgstr "主机通过以太网拨号"
+
+msgid "Apply MT5700M dialing settings"
+msgstr "应用 MT5700M 拨号设置"
+
+msgid "PCIe Ethernet PHY"
+msgstr "PCIe 以太网 PHY"
+
+msgid "Select the PHY chip profile connected to the MT5700M PCIe bus."
+msgstr "选择连接到 MT5700M PCIe 总线的 PHY 芯片配置。"
+
+msgid "PHY profile"
+msgstr "PHY 配置"
+
+msgid "Choose the profile that matches the installed hardware. This is not an Ethernet auto-negotiation setting."
+msgstr "请选择与实际硬件一致的配置；这不是以太网自动协商速率设置。"
+
+msgid "Apply PHY profile"
+msgstr "应用 PHY 配置"
+
+msgid "Change PCIe Ethernet PHY"
+msgstr "更改 PCIe 以太网 PHY"
+
+msgid "An incorrect PHY profile can make the module Ethernet link unavailable."
+msgstr "PHY 配置错误可能导致模组以太网链路不可用。"
+
+msgid "Interface operating mode"
+msgstr "接口工作模式"
+
+msgid "Choose one of the two hardware-interface modes documented for MT5700M."
+msgstr "选择 MT5700M 手册规定的两种硬件接口模式之一。"
+
+msgid "This changes USB and Ethernet addressing and may disconnect the current session."
+msgstr "此操作会更改 USB 与以太网地址，当前连接可能中断。"
+
+msgid "The MT5700M manual requires IP filtering to be disabled and an airplane-mode cycle before post-routing takes effect."
+msgstr "MT5700M 手册要求关闭 IP 过滤，并切换一次飞行模式后 PostRoute 才会生效。"
+
+msgid "Complete an MT5700M restart or airplane-mode cycle before reconnecting mobile data."
+msgstr "请先重启 MT5700M 或切换一次飞行模式，再重新连接移动数据。"
+
+msgid "Forward unsolicited inbound IPv4 traffic to one host on the module LAN."
+msgstr "将未请求的入站 IPv4 流量转发到模组局域网内的一台主机。"
+
+msgid "Use an IPv4 address from the current module LAN. Leave empty to remove the DMZ setting. DMZ and post-routing cannot be enabled together."
+msgstr "请输入当前模组局域网内的 IPv4 地址；留空可删除 DMZ。DMZ 与 PostRoute 不能同时启用。"
+
+msgid "Configure DMZ before dialing; remove it after disconnecting. The selected host may be exposed to the mobile network."
+msgstr "请在拨号前配置 DMZ，并在断开连接后删除；所选主机可能直接暴露于移动网络。"
+
+msgid "Configure MT5700M NR capabilities. Changes require an airplane-mode cycle."
+msgstr "配置 MT5700M 的 NR 能力；修改后需要切换一次飞行模式。"
+
+msgid "NR carrier aggregation capability"
+msgstr "NR 载波聚合能力"
+
+msgid "NR carrier aggregation"
+msgstr "NR 载波聚合"
+
+msgid "DSS rate matching capability"
+msgstr "DSS 速率匹配能力"
+
+msgid "Additional DMRS capability"
+msgstr "附加 DMRS 能力"
+
+msgid "Keep factory capability"
+msgstr "保持出厂能力"
+
+msgid "Force capability off"
+msgstr "强制关闭能力"
+
+msgid "For DSS options, value 1 forces the advertised capability off; value 0 keeps the factory capability unchanged."
+msgstr "DSS 选项中，值 1 会强制关闭对外声明的能力，值 0 保持出厂能力不变。"
+
+msgid "Apply the selected NR carrier aggregation capability?"
+msgstr "应用所选的 NR 载波聚合能力设置吗？"
+
+msgid "Apply the selected DSS capability restrictions?"
+msgstr "应用所选的 DSS 能力限制吗？"
+
+msgid "Hardware and SIM"
+msgstr "硬件与 SIM"
+
+msgid "Review the PCIe controller and configure SIM hotplug behavior."
+msgstr "查看 PCIe 控制器状态并配置 SIM 热插拔行为。"
+
+msgid "PCIe controller"
+msgstr "PCIe 控制器"
+
+msgid "Apply SIM hotplug"
+msgstr "应用 SIM 热插拔设置"
+
+msgid "Configure the MT5700M built-in temperature-protection polling."
+msgstr "配置 MT5700M 内置温度保护轮询。"
+
+msgid "RRC state"
+msgstr "RRC 状态"
+
+msgid "Inactive"
+msgstr "非激活"
+
+msgid "Invalid"
+msgstr "无效"
+
+msgid "Camped"
+msgstr "已驻留"
+
+msgid "Not camped"
+msgstr "未驻留"
+
+msgid "Cell ID"
+msgstr "小区 ID"
+
+msgid "SCS type"
+msgstr "SCS 类型"
+
+msgid "Radio status"
+msgstr "无线状态"
+
+msgid "LTE secondary carriers"
+msgstr "LTE 辅载波"
+
+msgid "NSA secondary connections"
+msgstr "NSA 辅连接"
+
+msgid "The MT5700M manual allows at most 20 lock entries."
+msgstr "MT5700M 手册规定最多可设置 20 组锁定项。"
+
+msgid "NR SCS type must be between 0 and 4."
+msgstr "NR SCS 类型必须在 0 到 4 之间。"
+
+msgid "PCI is outside the valid range for the selected radio technology."
+msgstr "PCI 超出了所选无线制式的有效范围。"
+
+msgid "Working…"
+msgstr "正在处理…"
+
+msgid "Applying the connection action…"
+msgstr "正在执行连接操作…"
+
+msgid "Redial started."
+msgstr "已开始重新拨号。"
+
+msgid "Dialing started."
+msgstr "已开始拨号。"
+
+msgid "Connection stopped."
+msgstr "连接已停止。"
+
+msgid "Disconnect"
+msgstr "断开连接"
+
+msgid "Disconnect the mobile data connection now?"
+msgstr "确定现在断开移动数据连接吗？"
+
+msgid "The 5G connection will be interrupted briefly while the modem redials."
+msgstr "重新拨号期间，5G 连接会短暂中断。"
+
+msgid "No dialing log is available."
+msgstr "暂无拨号日志。"
+
+msgid "APN"
+msgstr "APN"
+
+msgid "IPv4"
+msgstr "IPv4"
+
+msgid "IPv6"
+msgstr "IPv6"
+
+msgid "Remove the current %s frequency lock? The change takes effect after an airplane-mode cycle or module restart."
+msgstr "解除当前 %s 频率锁定吗？修改会在切换飞行模式或重启模组后生效。"
+
+msgid "Apply this %s frequency lock? The change takes effect after an airplane-mode cycle or module restart."
+msgstr "应用此 %s 频率锁定吗？修改会在切换飞行模式或重启模组后生效。"
+
+msgid "Frequency lock saved. Restart the module or cycle airplane mode to apply it."
+msgstr "频率锁定已保存；请重启模组或切换飞行模式使其生效。"
+
+msgid "Automatically detect the PCUI interface"
+msgstr "自动识别 PCUI 接口"
+
+msgid "The manager validates the TD Tech PCUI descriptor instead of assuming a fixed ttyUSB number. Leave this empty unless troubleshooting."
+msgstr "管理器会校验鼎桥 PCUI 描述符，不再假定固定的 ttyUSB 编号。除故障排查外请保持为空。"
+
+msgid "Restart accepted. The USB interface normally returns in about 22 seconds."
+msgstr "模组已接受重启命令，USB 接口通常会在约 22 秒后恢复。"
+
+msgid "Normal mode"
+msgstr "正常模式"
+
+msgid "Upgrade mode"
+msgstr "升级模式"
+
+msgid "Dump mode"
+msgstr "崩溃转储模式"
+
+msgid "Unknown USB mode"
+msgstr "未知 USB 模式"
+
+msgid "Not detected"
+msgstr "未检测到"
+
+msgid "The MT5700M is in %s (USB PID %s). Mobile data and AT management remain unavailable until normal mode returns."
+msgstr "MT5700M 当前处于%s（USB PID %s）。恢复正常模式前，移动数据和 AT 管理不可用。"
+
+msgid "USB state"
+msgstr "USB 状态"
+
+msgid "USB identity"
+msgstr "USB 标识"
+
+msgid "Network session"
+msgstr "网络会话"
+
+msgid "Addresses and DNS supplied directly by the MT5700M mobile network session."
+msgstr "由 MT5700M 移动网络会话直接分配的地址和 DNS。"
+
+msgid "IPv4 address"
+msgstr "IPv4 地址"
+
+msgid "IPv4 gateway"
+msgstr "IPv4 网关"
+
+msgid "IPv4 DNS"
+msgstr "IPv4 DNS"
+
+msgid "IPv6 address"
+msgstr "IPv6 地址"
+
+msgid "IPv6 DNS"
+msgstr "IPv6 DNS"
+
+msgid "IP capability"
+msgstr "IP 能力"
+
+msgid "IPv4 only"
+msgstr "仅 IPv4"
+
+msgid "IPv6 only"
+msgstr "仅 IPv6"
+
+msgid "IPv4 / IPv6 · same APN"
+msgstr "IPv4 / IPv6 · 共用 APN"
+
+msgid "IPv4 / IPv6 · separate APNs"
+msgstr "IPv4 / IPv6 · 独立 APN"
+
+msgid "Network default"
+msgstr "网络默认值"
+
+msgid "Session usage"
+msgstr "会话用量"
+
+msgid "Counters are maintained by the module and are independent of OpenWrt interface statistics."
+msgstr "这些计数由模组维护，与 OpenWrt 接口统计相互独立。"
+
+msgid "Current session duration"
+msgstr "本次会话时长"
+
+msgid "Current transmitted"
+msgstr "本次已发送"
+
+msgid "Current received"
+msgstr "本次已接收"
+
+msgid "Total duration"
+msgstr "累计时长"
+
+msgid "Total transmitted"
+msgstr "累计已发送"
+
+msgid "Total received"
+msgstr "累计已接收"
+
+msgid "Network maximum downlink"
+msgstr "网络最大下行"
+
+msgid "Network maximum uplink"
+msgstr "网络最大上行"
+
+msgid "Clear counters"
+msgstr "清除计数"
+
+msgid "Clear module traffic counters"
+msgstr "清除模组流量计数"
+
+msgid "This permanently clears current and accumulated MT5700M data-flow counters."
+msgstr "这会永久清除 MT5700M 本次及累计的数据流量计数。"
+
+msgid "Module PDP contexts"
+msgstr "模组 PDP 上下文"
+
+msgid "Advanced module-native profiles. IMS contexts are protected from editing; normal OpenWrt users should configure APN in the dialing profile above."
+msgstr "模组原生高级配置。IMS 上下文受到编辑保护；普通 OpenWrt 用户应在上方拨号配置中设置 APN。"
+
+msgid "Add profile"
+msgstr "添加配置"
+
+msgid "Add PDP context"
+msgstr "添加 PDP 上下文"
+
+msgid "Edit PDP context"
+msgstr "编辑 PDP 上下文"
+
+msgid "This changes a module-native PDP profile. The OpenWrt dialing profile above remains the normal place to configure APN."
+msgstr "此操作修改模组原生 PDP 配置；通常仍应在上方 OpenWrt 拨号配置中设置 APN。"
+
+msgid "Carrier default"
+msgstr "运营商默认"
+
+msgid "Enter a CID from 1 to 11 and a valid APN."
+msgstr "请输入 1 到 11 的 CID 和有效 APN。"
+
+msgid "Active"
+msgstr "已激活"
+
+msgid "Activate"
+msgstr "激活"
+
+msgid "Deactivate"
+msgstr "停用"
+
+msgid "Activate PDP context"
+msgstr "激活 PDP 上下文"
+
+msgid "Deactivate PDP context"
+msgstr "停用 PDP 上下文"
+
+msgid "Changing a module PDP context can interrupt mobile service."
+msgstr "修改模组 PDP 上下文可能中断移动网络服务。"
+
+msgid "Remove PDP context"
+msgstr "删除 PDP 上下文"
+
+msgid "Remove CID %s from the module?"
+msgstr "确定从模组删除 CID %s 吗？"
+
+msgid "IMS reserved"
+msgstr "IMS 保留"
+
+msgid "System reserved"
+msgstr "系统保留"
+
+msgid "No PDP contexts were reported."
+msgstr "模组未返回 PDP 上下文。"
+
+msgid "d"
+msgstr "天"
+
+msgid "h"
+msgstr "小时"
+
+msgid "min"
+msgstr "分钟"
+
+msgid "Radio link details"
+msgstr "无线链路详情"
+
+msgid "Uplink modulation"
+msgstr "上行调制"
+
+msgid "Downlink modulation"
+msgstr "下行调制"
+
+msgid "QoS class"
+msgstr "QoS 等级"
+
+msgid "NR PUSCH power"
+msgstr "NR PUSCH 功率"
+
+msgid "NR PUCCH power"
+msgstr "NR PUCCH 功率"
+
+msgid "NR transmit frequency"
+msgstr "NR 发射频率"
+
+msgid "5G beam and service"
+msgstr "5G 波束与服务"
+
+msgid "SSB ARFCN"
+msgstr "SSB ARFCN"
+
+msgid "Serving beam PCI"
+msgstr "服务波束 PCI"
+
+msgid "Beam RSRP"
+msgstr "波束 RSRP"
+
+msgid "Beam SINR"
+msgstr "波束 SINR"
+
+msgid "Detected SSB beams"
+msgstr "检测到的 SSB 波束"
+
+msgid "IMS registration"
+msgstr "IMS 注册"
+
+msgid "Data registration"
+msgstr "数据注册"
+
+msgid "LTE-NR dual connectivity"
+msgstr "LTE-NR 双连接"
+
+msgid "Network access policy"
+msgstr "网络接入策略"
+
+msgid "Select the radio technologies and 5G core architecture the module may use."
+msgstr "选择模组可使用的无线制式和 5G 核心网架构。"
+
+msgid "Radio access order"
+msgstr "无线接入顺序"
+
+msgid "5G NR / LTE / WCDMA (recommended)"
+msgstr "5G NR / LTE / WCDMA（推荐）"
+
+msgid "5G NR / LTE"
+msgstr "5G NR / LTE"
+
+msgid "5G NR only"
+msgstr "仅 5G NR"
+
+msgid "LTE only"
+msgstr "仅 LTE"
+
+msgid "LTE / WCDMA"
+msgstr "LTE / WCDMA"
+
+msgid "Apply radio mode"
+msgstr "应用无线模式"
+
+msgid "Change radio access mode"
+msgstr "更改无线接入模式"
+
+msgid "The module may lose service if the selected radio technology is unavailable."
+msgstr "如果当前网络不支持所选无线制式，模组可能失去服务。"
+
+msgid "5G access mode"
+msgstr "5G 接入模式"
+
+msgid "SA + NSA (Option 2 + 3)"
+msgstr "SA + NSA（Option 2 + 3）"
+
+msgid "SA only (Option 2)"
+msgstr "仅 SA（Option 2）"
+
+msgid "NSA only (Option 3)"
+msgstr "仅 NSA（Option 3）"
+
+msgid "The MT5700M manual requires an airplane-mode cycle before this setting and a module restart afterwards. The cycle is handled automatically; restart when ready."
+msgstr "MT5700M 手册要求设置前切换飞行模式、设置后重启模组。飞行模式切换会自动执行，请在合适时重启。"
+
+msgid "Apply 5G access mode"
+msgstr "应用 5G 接入模式"
+
+msgid "Change 5G access mode"
+msgstr "更改 5G 接入模式"
+
+msgid "Mobile service will disconnect briefly while the module enters airplane mode."
+msgstr "模组进入飞行模式时，移动网络服务会短暂断开。"
+
+msgid "Device and SIM identifiers are displayed only in this local management page."
+msgstr "设备和 SIM 标识仅显示在本地管理页面中。"
+
+msgid "Network time"
+msgstr "网络时间"
+
+msgid "Radio function"
+msgstr "无线功能"
+
+msgid "Airplane mode"
+msgstr "飞行模式"
+
+msgid "Online"
+msgstr "在线"
+
+msgid "SIM power path"
+msgstr "SIM 供电通路"
+
+msgid "Thermal protection status"
+msgstr "温度保护状态"
+
+msgid "Protection level"
+msgstr "保护等级"
+
+msgid "Level %d"
+msgstr "%d 级"
+
+msgid "First power reduction"
+msgstr "一级功率降低"
+
+msgid "Second power reduction"
+msgstr "二级功率降低"
+
+msgid "Continuous power limit"
+msgstr "持续功率限制"
+
+msgid "Emergency airplane mode"
+msgstr "紧急飞行模式"
+
+msgid "Thermal logging"
+msgstr "温保日志"
+
+msgid "SIM and radio controls"
+msgstr "SIM 与无线控制"
+
+msgid "Maintenance actions defined by the MT5700M AT command manual."
+msgstr "MT5700M AT 命令手册定义的维护操作。"
+
+msgid "Current radio state"
+msgstr "当前无线状态"
+
+msgid "Enter airplane mode"
+msgstr "进入飞行模式"
+
+msgid "Resume mobile radio"
+msgstr "恢复移动网络"
+
+msgid "Change radio function"
+msgstr "更改无线功能"
+
+msgid "Airplane mode immediately disconnects mobile data and voice service."
+msgstr "进入飞行模式会立即断开移动数据和语音服务。"
+
+msgid "Resume mobile registration and data service?"
+msgstr "恢复移动网络注册和数据服务吗？"
+
+msgid "Module status LED"
+msgstr "模组状态指示灯"
+
+msgid "Apply LED setting"
+msgstr "应用指示灯设置"
+
+msgid "The LED setting is stored by the module and takes effect after restart."
+msgstr "指示灯设置由模组保存，并在重启后生效。"
+
+msgid "Manage SIM PIN"
+msgstr "管理 SIM PIN"
+
+msgid "SIM PIN management"
+msgstr "SIM PIN 管理"
+
+msgid "Incorrect PIN or PUK attempts can permanently lock the SIM. Check the carrier documentation before continuing."
+msgstr "错误输入 PIN 或 PUK 可能永久锁定 SIM 卡；继续前请核对运营商资料。"
+
+msgid "Operation"
+msgstr "操作"
+
+msgid "Verify current PIN"
+msgstr "验证当前 PIN"
+
+msgid "Enable PIN lock"
+msgstr "启用 PIN 锁"
+
+msgid "Disable PIN lock"
+msgstr "停用 PIN 锁"
+
+msgid "Change PIN"
+msgstr "更改 PIN"
+
+msgid "Unlock with PUK"
+msgstr "使用 PUK 解锁"
+
+msgid "Current PIN"
+msgstr "当前 PIN"
+
+msgid "New PIN"
+msgstr "新 PIN"
+
+msgid "PUK code"
+msgstr "PUK 码"
+
+msgid "PIN"
+msgstr "PIN"
+
+msgid "PIN must contain 4–8 digits; PUK must contain exactly 8 digits."
+msgstr "PIN 必须为 4–8 位数字；PUK 必须为 8 位数字。"
+
+msgid "Apply PCIe controller"
+msgstr "应用 PCIe 控制器设置"
+
+msgid "Disabling the PCIe controller removes the module Ethernet data path and may reduce power use."
+msgstr "停用 PCIe 控制器会移除模组以太网数据通路，并可能降低功耗。"
+
+msgid "Edit"
+msgstr "编辑"
+
+msgid "Remove"
+msgstr "删除"
+
+msgid "Save"
+msgstr "保存"
+msgid "5G access architecture"
+msgstr "5G 接入架构"
+
+msgid "Activate the physical SIM for network registration?"
+msgstr "启用实体 SIM 卡进行网络注册？"
+
+msgid "Active PDP sessions reported by the MT5700M firmware."
+msgstr "MT5700M 固件当前上报的活动 PDP 会话。"
+
+msgid "Advanced actions are grouped here so normal device information remains easy to scan."
+msgstr "高级操作集中在此处，避免干扰日常设备信息浏览。"
+
+msgid "Allow roaming"
+msgstr "允许漫游"
+
+msgid "Apply SIM activation"
+msgstr "应用 SIM 激活状态"
+
+msgid "Apply network policy"
+msgstr "应用网络策略"
+
+msgid "Change IP passthrough"
+msgstr "更改 IP 直通"
+
+msgid "Change network policy"
+msgstr "更改网络策略"
+
+msgid "Changing SMS service cycles airplane mode and also changes the IMS PDP context. Leave it enabled unless the carrier does not support IMS messaging."
+msgstr "更改短信服务会切换一次飞行模式，并修改 IMS PDP 上下文。除非运营商不支持 IMS 短信，否则请保持启用。"
+
+msgid "Changing passthrough can remove the module management address and interrupt connectivity."
+msgstr "更改直通模式可能移除模组管理地址并中断连接。"
+
+msgid "Choose whether the module may use standalone 5G, non-standalone 5G, or both."
+msgstr "选择模组可使用独立组网 5G、非独立组网 5G，或同时使用两者。"
+
+msgid "Configure thermal protection"
+msgstr "配置温度保护"
+
+msgid "Confirmation text does not match."
+msgstr "确认文字不匹配。"
+
+msgid "Continuous-limit recovery"
+msgstr "持续限功率恢复"
+
+msgid "Daily SIM and radio controls defined by the MT5700M AT command manual."
+msgstr "MT5700M AT 命令手册定义的日常 SIM 与射频控制。"
+
+msgid "Data service only"
+msgstr "仅数据业务"
+
+msgid "Deactivating the SIM immediately removes mobile service."
+msgstr "停用 SIM 会立即中断移动网络服务。"
+
+msgid "Device identity laboratory"
+msgstr "设备身份实验室"
+
+msgid "Emergency recovery"
+msgstr "紧急飞行模式恢复"
+
+msgid "Enter a different 15-digit IMEI."
+msgstr "请输入不同于当前值的 15 位 IMEI。"
+
+msgid "Ethernet"
+msgstr "以太网"
+
+msgid "Every threshold must be a temperature from 0 to 150°C."
+msgstr "每个门限必须是 0 至 150°C 的温度值。"
+
+msgid "Factory reset accepted. The module will restart."
+msgstr "已接受恢复出厂设置，模组将重新启动。"
+
+msgid "First recovery"
+msgstr "一级温保恢复"
+
+msgid "Home network only"
+msgstr "仅归属网络"
+
+msgid "Host NDIS"
+msgstr "主机 NDIS 拨号"
+
+msgid "IMEI writing is not documented in the supplied MT5700M AT manual and may be restricted by local law or the mobile operator. This control is provided only for restoring the original device identity."
+msgstr "所提供的 MT5700M AT 手册未记录 IMEI 写入功能，且该操作可能受当地法规或运营商限制。此入口仅用于恢复设备原始身份。"
+
+msgid "IP passthrough is an original-manager compatibility feature. Keep it disabled when OpenWrt owns the mobile connection."
+msgstr "IP 直通是原版管理器的兼容功能。由 OpenWrt 负责移动连接时请保持关闭。"
+
+msgid "Incorrect thresholds can cause performance loss, overheating or an emergency radio shutdown. Keep every recovery value below its matching trigger value."
+msgstr "错误门限可能导致性能下降、过热或紧急关闭射频。每个恢复温度必须低于对应触发温度。"
+
+msgid "LTE bands"
+msgstr "LTE 频段"
+
+msgid "Module application"
+msgstr "模组应用拨号"
+
+msgid "Module data sessions"
+msgstr "模组数据会话"
+
+msgid "Name this command"
+msgstr "为此命令命名"
+
+msgid "New IMEI"
+msgstr "新 IMEI"
+
+msgid "Normal threshold"
+msgstr "正常状态门限"
+
+msgid "Other"
+msgstr "其他"
+
+msgid "Protection and maintenance"
+msgstr "保护与维护"
+
+msgid "Remove saved command"
+msgstr "删除已收藏命令"
+
+msgid "Restore factory settings"
+msgstr "恢复出厂设置"
+
+msgid "Restore module factory settings"
+msgstr "恢复模组出厂设置"
+
+msgid "Review change"
+msgstr "复核更改"
+
+msgid "Roaming policy"
+msgstr "漫游策略"
+
+msgid "SIM activation"
+msgstr "SIM 激活状态"
+
+msgid "SIM and radio"
+msgstr "SIM 与射频"
+
+msgid "SIM slot 0"
+msgstr "SIM 卡槽 0"
+
+msgid "SIM slot 1"
+msgstr "SIM 卡槽 1"
+
+msgid "Save command"
+msgstr "收藏命令"
+
+msgid "Second recovery"
+msgstr "二级温保恢复"
+
+msgid "Select all entries to use every supported band. Restricting bands can prevent registration when travelling."
+msgstr "选择全部条目即使用所有受支持频段。限制频段可能导致异地使用时无法注册网络。"
+
+msgid "Select radio priority, roaming and the service domain. These values are applied together as required by the MT5700M manual."
+msgstr "选择网络制式优先级、漫游和服务域；根据 MT5700M 手册要求，这些参数将作为一组同时应用。"
+
+msgid "Serial thermal log"
+msgstr "串口温保日志"
+
+msgid "Service domain"
+msgstr "服务域"
+
+msgid "Stored thermal log"
+msgstr "温保日志文件"
+
+msgid "Switch SIM slot"
+msgstr "切换 SIM 卡槽"
+
+msgid "The MT5700M will detach from the network while changing the physical SIM path."
+msgstr "更改实体 SIM 通道时，MT5700M 将暂时从移动网络注销。"
+
+msgid "The module may lose service if the selected radio technology or bands are unavailable."
+msgstr "如果当前网络不提供所选制式或频段，模组可能失去服务。"
+
+msgid "Thermal protection settings"
+msgstr "温度保护设置"
+
+msgid "Thermal settings saved."
+msgstr "温度保护设置已保存。"
+
+msgid "This erases module-side APN, radio, SIM, interface and thermal settings, then restarts the MT5700M. OpenWrt settings are not erased."
+msgstr "这会清除模组侧 APN、射频、SIM、接口和温保设置并重启 MT5700M；不会清除 OpenWrt 设置。"
+
+msgid "This unsupported operation can prevent network registration. Continue only when restoring the identity printed on the module label."
+msgstr "此非手册操作可能导致无法注册网络。仅在恢复模组标签所印原始身份时继续。"
+
+msgid "Trigger temperatures must rise by level, and each recovery temperature must be lower than its trigger."
+msgstr "各级触发温度必须逐级升高，每个恢复温度必须低于对应触发温度。"
+
+msgid "Type RESET to confirm"
+msgstr "输入 RESET 以确认"
+
+msgid "Voice and data service"
+msgstr "语音与数据业务"
+
+msgid "WCDMA bands"
+msgstr "WCDMA 频段"
+
+msgid "Write device identity"
+msgstr "写入设备身份"
+
+msgid "Network and Cells"
+msgstr "网络与小区"
+
+msgid "Device and SIM"
+msgstr "设备与 SIM"
+
+msgid "Hardware"
+msgstr "硬件"
+
+msgid "Manager"
+msgstr "管理器"
+
+msgid "Loading detailed radio diagnostics…"
+msgstr "正在载入详细无线诊断…"
+
+msgid "Clear received messages"
+msgstr "清空收到的短信"
+
+msgid "Clear sent history"
+msgstr "清空已发送记录"
+
+msgid "Clearing message history cannot be undone."
+msgstr "清除短信记录后无法撤销。"
+
+msgid "This removes the local sent-history entry."
+msgstr "这会删除浏览器本地保存的已发送记录。"
+
+msgid "There is no sent history to export."
+msgstr "没有可导出的已发送记录。"
+
+msgid "The selected file is not a valid MT5700M sent-history backup."
+msgstr "所选文件不是有效的 MT5700M 已发送记录备份。"
+
+msgid "The selected history file could not be read."
+msgstr "无法读取所选记录文件。"
+
+msgid "Sent messages are stored in this browser. Export a backup before clearing browser data or moving to another device."
+msgstr "已发送短信保存在当前浏览器中。清理浏览器数据或迁移设备前，请先导出备份。"
+
+msgid "Export sent history"
+msgstr "导出已发送记录"
+
+msgid "Import sent history"
+msgstr "导入已发送记录"
+
+msgid "Integrated MT5700M service"
+msgstr "MT5700M 集成服务"
+
+msgid "The MT5700M is not in normal USB mode. Connection settings remain available, but dialing cannot start."
+msgstr "MT5700M 当前不在正常 USB 模式。仍可编辑连接设置，但无法启动拨号。"
+
+msgid "Configure how the MT5700M connects to the mobile network."
+msgstr "设置 MT5700M 连接移动网络的方式。"
+
+msgid "Connection settings"
+msgstr "连接设置"
+
+msgid "APN is normally detected automatically. Save changes, then redial to use the new settings."
+msgstr "通常无需手动填写 APN。修改后请先保存，再重新拨号使设置生效。"
+
+msgid "Advanced connection tools"
+msgstr "高级连接工具"
+
+msgid "PDP profiles, module dialing modes and inbound routing for troubleshooting or special deployments."
+msgstr "用于故障排查或特殊网络环境的 PDP 配置、模组拨号方式和入站转发。"
+
+msgid "Communication diagnostics"
+msgstr "通信诊断"
+
+msgid "Low-level AT channel settings for troubleshooting module communication."
+msgstr "用于排查模组通信问题的底层 AT 通道设置。"
+
+msgid "Automatic mode recommended"
+msgstr "建议使用自动模式"
+
+msgid "These settings do not change APN or mobile data. Leave them unchanged unless automatic detection fails."
+msgstr "这些设置不会改变 APN 或移动数据。除非自动检测失败，否则请保持默认值。"
+
+msgid "Back to Device and SIM"
+msgstr "返回设备与 SIM"
+
+msgid "Module protection, recovery and communication troubleshooting tools."
+msgstr "集中管理模组保护、恢复和通信故障排查工具。"
+
+msgid "Select all"
+msgstr "全选"
+
+msgid "Select the WCDMA bands the module may use."
+msgstr "选择模组可以使用的 WCDMA 频段。"
+
+msgid "Select the LTE bands the module may use."
+msgstr "选择模组可以使用的 LTE 频段。"
+
+msgid "Keep all bands selected for normal use. Restricting bands can prevent registration when travelling."
+msgstr "日常使用建议保持全部频段选中；限制频段可能导致设备在异地无法注册网络。"
+
+msgid "Select at least one WCDMA band and one LTE band."
+msgstr "WCDMA 和 LTE 均需至少选择一个频段。"
+
+msgid "Apply network and band settings"
+msgstr "应用网络与频段设置"

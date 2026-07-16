@@ -40,12 +40,9 @@ discover_modem_interfaces() {
 	MODEM6_PRIMARY=""
 	MODEM_NETDEV=""
 
-	for modem in $(uci -q show qmodem 2>/dev/null | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
-		MODEM_NETDEV="$(uci -q get "${modem}.network" || true)"
-		[ -n "$MODEM_NETDEV" ] && break
-	done
+	MODEM_NETDEV="$(uci -q get network.MT5700M.device 2>/dev/null || uci -q get network.MT5700M.ifname 2>/dev/null || true)"
 
-	# First find the IPv4 interface attached directly to QModem's data device.
+	# First find the IPv4 interface attached directly to the MT5700M data device.
 	for section in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\([^.]*\)=interface$/\1/p'); do
 		device="$(uci -q get "network.${section}.device" || uci -q get "network.${section}.ifname" || true)"
 		if { [ -n "$MODEM_NETDEV" ] && [ "$device" = "$MODEM_NETDEV" ]; } || \
@@ -142,19 +139,21 @@ read_live_state() {
 	read_interface "${MODEM6_PRIMARY:-__missing_modem6__}"
 	MODEM6_PRESENT="$IFACE_PRESENT"; MODEM6_UP="$IFACE_UP"; MODEM6_AVAILABLE="$IFACE_AVAILABLE"; MODEM6_DEVICE="$IFACE_DEVICE"
 
-	# QModem discovers the built-in MT5700M before it creates a network section.
+	# The dedicated manager may discover the built-in MT5700M before netifd has
+	# created its network section.
 	# Treat that physical modem as present so a missing SIM or inactive data
 	# session is reported as disconnected, not as an unconfigured device.
 	if [ "$MODEM_PRESENT" != "1" ]; then
-		for modem in $(uci -q show qmodem 2>/dev/null | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
+		if [ -r /usr/share/mt5700m/usb.sh ]; then
+			. /usr/share/mt5700m/usb.sh
+			if mt5700m_usb_info >/dev/null 2>&1; then
 			MODEM_PRESENT=1
-			MODEM_DEVICE="$(uci -q get "${modem}.network" || true)"
-			[ -n "$MODEM_DEVICE" ] || MODEM_DEVICE="$(uci -q get "${modem}.data_interface" || true)"
+			MODEM_DEVICE="$(mt5700m_netdev || true)"
 			if [ -n "$MODEM_DEVICE" ] && [ -d "/sys/class/net/${MODEM_DEVICE}" ]; then
 				ip -4 addr show dev "$MODEM_DEVICE" 2>/dev/null | grep -q 'inet ' && MODEM_UP=1
 			fi
-			break
-		done
+			fi
+		fi
 	fi
 
 	DEFAULT4="$(ip -4 route show default 2>/dev/null | head -n 1)"
@@ -169,15 +168,11 @@ read_live_state() {
 }
 
 print_status() {
-	local qmodem_metric modem ipv6_owner
+	local modem_metric ipv6_owner
 
 	read_live_state
 	ipv6_owner="$(uci -q get h5000m_netmode.settings.ipv6_owner || true)"
-	qmodem_metric=""
-	for modem in $(uci -q show qmodem | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
-		qmodem_metric="$(uci -q get "${modem}.metric" || true)"
-		[ -n "$qmodem_metric" ] && break
-	done
+	modem_metric="$(uci -q get network.MT5700M.metric 2>/dev/null || uci -q get mt5700m.connection.metric 2>/dev/null || true)"
 
 	echo "mode=$mode"
 	echo "ipv6_policy=follow_preferred"
@@ -208,7 +203,7 @@ print_status() {
 	echo "usb_defaultroute=$(uci -q get "network.${MODEM_PRIMARY}.defaultroute" || echo 1)"
 	echo "usbv6_defaultroute=$(uci -q get "network.${MODEM6_PRIMARY}.defaultroute" || echo 1)"
 	echo "usbv6_auto=$(uci -q get "network.${MODEM6_PRIMARY}.auto" || echo 1)"
-	echo "qmodem_metric=$qmodem_metric"
+	echo "modem_metric=$modem_metric"
 	echo "default4=$DEFAULT4"
 	echo "default6=$DEFAULT6"
 }
@@ -370,11 +365,9 @@ apply_policy() {
 	done
 	uci -q commit network || return 1
 
-	for modem in $(uci -q show qmodem | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
-		uci -q set "${modem}.metric=${modem_metric}" || return 1
-	done
-	if uci -q show qmodem >/dev/null 2>&1; then
-		uci -q commit qmodem || return 1
+	if uci -q get mt5700m.connection >/dev/null 2>&1; then
+		uci -q set "mt5700m.connection.metric=${modem_metric}" || return 1
+		uci -q commit mt5700m || return 1
 	fi
 	return 0
 }
@@ -423,12 +416,10 @@ if [ "$action" = "apply" ] || [ "$action" = "set" ]; then
 		echo "network reload failed" >&2
 		exit 1
 	fi
-	# A network reload can terminate QModem's procd child while the MT5700M
-	# keeps its internal NCM session alive. Reconcile the supervisor so future
-	# disconnects still have an active redial monitor.
-	if [ -x /etc/init.d/qmodem_network ] && ! /etc/init.d/qmodem_network reload >/dev/null 2>&1; then
-		logger -t "$TAG" "QModem supervisor reload failed after applying mode=$mode"
-		echo "QModem supervisor reload failed" >&2
+	# Reconcile the dedicated manager after netifd recreates the interfaces.
+	if [ -x /usr/sbin/mt5700m-manager ] && ! /usr/sbin/mt5700m-manager sync >/dev/null 2>&1; then
+		logger -t "$TAG" "MT5700M manager sync failed after applying mode=$mode"
+		echo "MT5700M manager sync failed" >&2
 		exit 1
 	fi
 	# Route both address families through the same live exit. In priority modes
