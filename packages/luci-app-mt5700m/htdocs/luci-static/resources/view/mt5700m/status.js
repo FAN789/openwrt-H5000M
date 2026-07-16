@@ -136,7 +136,7 @@ return view.extend({
 			'.mt5700m-metric-unit{font-size:12px;color:var(--text-color-medium,#69717d)}',
 			'.mt5700m-meter{position:relative;height:6px;margin-top:14px;border-radius:999px;background:linear-gradient(90deg,#db5b52 0%,#e4a23a 34%,#4b94df 67%,#13a979 100%);box-shadow:inset 0 0 0 1px rgba(30,42,56,.06)}',
 			'.mt5700m-meter-marker{position:absolute;top:50%;width:11px;height:11px;border:2px solid #fff;border-radius:50%;background:#263746;box-shadow:0 1px 4px rgba(20,35,50,.34);transform:translate(-50%,-50%)}',
-			'.mt5700m-signal-bars{display:flex;align-items:flex-end;gap:3px;height:20px;margin-top:10px;padding:0 1px}',
+			'.mt5700m-signal-bars{display:flex;align-items:flex-end;gap:3px;height:32px;margin-top:7px;padding:0 1px}',
 			'.mt5700m-signal-bar{flex:1;min-width:2px;border-radius:2px 2px 1px 1px;background:var(--border-color-medium,#d9dde4);opacity:.58;transition:background-color .2s,opacity .2s}',
 			'.mt5700m-signal-bar.is-active{background:#4d94db;opacity:1}.mt5700m-signal-bars.is-excellent .mt5700m-signal-bar.is-active{background:#13a979}.mt5700m-signal-bars.is-good .mt5700m-signal-bar.is-active{background:#4b94df}.mt5700m-signal-bars.is-fair .mt5700m-signal-bar.is-active{background:#e4a23a}.mt5700m-signal-bars.is-weak .mt5700m-signal-bar.is-active{background:#db5b52}',
 			'.mt5700m-ca{border:1px solid var(--border-color-medium,#d9dde4);border-radius:13px;background:var(--background-color-high,#fff);overflow:hidden}',
@@ -178,7 +178,7 @@ return view.extend({
 		for (i = 0; quality.signal && i < 12; i++)
 			bars.push(E('span', {
 				'class': 'mt5700m-signal-bar' + (i < activeBars ? ' is-active' : ''),
-				'style': 'height:%dpx'.format(5 + i)
+				'style': 'height:%dpx'.format(7 + i * 2)
 			}));
 
 		return E('div', { 'class': 'mt5700m-metric' }, [
