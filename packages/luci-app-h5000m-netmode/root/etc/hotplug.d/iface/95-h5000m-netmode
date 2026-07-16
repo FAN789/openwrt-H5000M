@@ -1,0 +1,23 @@
+#!/bin/sh
+
+case "$ACTION" in
+	ifup|ifdown) ;;
+	*) exit 0 ;;
+esac
+
+case "$INTERFACE" in
+	wan|wan6) ;;
+	*)
+		[ -n "$INTERFACE" ] || exit 0
+		[ -n "$(uci -q get "network.${INTERFACE}.modem_config" || true)" ] || exit 0
+		;;
+esac
+
+# Let netifd finish adding or removing the IPv4 default route before deciding
+# which IPv6 client should be active. The command is idempotent and locked.
+(
+	sleep 1
+	/usr/sbin/h5000m-netmode reconcile >/dev/null 2>&1
+) &
+
+exit 0

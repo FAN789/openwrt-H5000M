@@ -169,9 +169,10 @@ read_live_state() {
 }
 
 print_status() {
-	local qmodem_metric modem
+	local qmodem_metric modem ipv6_owner
 
 	read_live_state
+	ipv6_owner="$(uci -q get h5000m_netmode.settings.ipv6_owner || true)"
 	qmodem_metric=""
 	for modem in $(uci -q show qmodem | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
 		qmodem_metric="$(uci -q get "${modem}.metric" || true)"
@@ -180,6 +181,7 @@ print_status() {
 
 	echo "mode=$mode"
 	echo "ipv6_policy=follow_preferred"
+	echo "ipv6_owner=${ipv6_owner:-none}"
 	echo "wan_present=$WAN_PRESENT"
 	echo "wan_up=$WAN_UP"
 	echo "wan6_up=$WAN6_UP"
@@ -215,6 +217,79 @@ set_network_option() {
 	local section="$1" option="$2" value="$3"
 	interface_exists "$section" || return 0
 	uci -q set "network.${section}.${option}=${value}"
+}
+
+set_network_option_if_changed() {
+	local section="$1" option="$2" value="$3" current
+	interface_exists "$section" || return 0
+	current="$(uci -q get "network.${section}.${option}" || true)"
+	[ "$current" = "$value" ] && return 0
+	uci -q set "network.${section}.${option}=${value}" || return 1
+	NETWORK_CHANGED=1
+}
+
+select_ipv6_owner() {
+	read_live_state
+	case "$mode" in
+		wan_only) IPV6_OWNER="wan" ;;
+		modem_only) IPV6_OWNER="modem" ;;
+		wan_first|modem_first)
+			case "$ACTIVE4" in
+				wan|modem) IPV6_OWNER="$ACTIVE4" ;;
+				*) [ "$mode" = "modem_first" ] && IPV6_OWNER="modem" || IPV6_OWNER="wan" ;;
+			esac
+		;;
+	esac
+}
+
+align_ipv6_to_active4() {
+	local previous_owner
+
+	select_ipv6_owner
+	previous_owner="$(uci -q get h5000m_netmode.settings.ipv6_owner || true)"
+	NETWORK_CHANGED=0
+
+	case "$IPV6_OWNER" in
+		modem)
+			set_network_option_if_changed wan6 defaultroute 0 || return 1
+			set_network_option_if_changed wan6 auto 0 || return 1
+			[ -n "$MODEM6_PRIMARY" ] && set_network_option_if_changed "$MODEM6_PRIMARY" defaultroute 1 || true
+			[ -n "$MODEM6_PRIMARY" ] && set_network_option_if_changed "$MODEM6_PRIMARY" auto 1 || true
+			;;
+		*)
+			IPV6_OWNER="wan"
+			set_network_option_if_changed wan6 defaultroute 1 || return 1
+			set_network_option_if_changed wan6 auto 1 || return 1
+			[ -n "$MODEM6_PRIMARY" ] && set_network_option_if_changed "$MODEM6_PRIMARY" defaultroute 0 || true
+			[ -n "$MODEM6_PRIMARY" ] && set_network_option_if_changed "$MODEM6_PRIMARY" auto 0 || true
+			;;
+	esac
+
+	if [ "$previous_owner" != "$IPV6_OWNER" ]; then
+		uci -q set "h5000m_netmode.settings.ipv6_owner=${IPV6_OWNER}" || return 1
+		uci -q commit h5000m_netmode || return 1
+	fi
+	[ "$NETWORK_CHANGED" = "0" ] || uci -q commit network || return 1
+
+	case "$IPV6_OWNER" in
+		modem)
+			[ "$WAN6_UP" != "1" ] || ifdown wan6 >/dev/null 2>&1 || true
+			if [ "$MODEM_UP" = "1" ] && [ "$MODEM6_UP" != "1" ] && [ -n "$MODEM6_PRIMARY" ]; then
+				ifup "$MODEM6_PRIMARY" >/dev/null 2>&1 || true
+			fi
+			;;
+		wan)
+			[ "$MODEM6_UP" != "1" ] || ifdown "$MODEM6_PRIMARY" >/dev/null 2>&1 || true
+			if [ "$WAN_UP" = "1" ] && [ "$WAN6_UP" != "1" ]; then
+				ifup wan6 >/dev/null 2>&1 || true
+			fi
+			;;
+	esac
+
+	if [ "$previous_owner" != "$IPV6_OWNER" ]; then
+		logger -t "$TAG" "IPv6 owner changed ${previous_owner:-none}->${IPV6_OWNER} active4=${ACTIVE4} mode=${mode}"
+	fi
+	return 0
 }
 
 acquire_lock() {
@@ -317,8 +392,9 @@ case "$action" in
 			*) echo "invalid exit policy" >&2; exit 64 ;;
 		esac
 		;;
+	reconcile) ;;
 	apply|'') ;;
-	*) echo "Usage: $0 {status|apply|set MODE}" >&2; exit 64 ;;
+	*) echo "Usage: $0 {status|apply|reconcile|set MODE}" >&2; exit 64 ;;
 esac
 
 if ! acquire_lock; then
@@ -326,6 +402,14 @@ if ! acquire_lock; then
 	exit 2
 fi
 trap release_lock EXIT INT TERM
+
+if [ "$action" = "reconcile" ]; then
+	if ! align_ipv6_to_active4; then
+		logger -t "$TAG" "failed to align IPv6 with the active IPv4 exit"
+		exit 1
+	fi
+	exit 0
+fi
 
 if ! apply_policy; then
 	logger -t "$TAG" "failed to persist exit policy mode=$mode"
@@ -347,19 +431,10 @@ if [ "$action" = "apply" ] || [ "$action" = "set" ]; then
 		echo "QModem supervisor reload failed" >&2
 		exit 1
 	fi
-	# Stop the unused IPv6 client instead of leaving it route-less. This avoids
-	# DHCPv6 retries and guarantees that both address families cannot silently
-	# split across different uplinks when the preferred network has no IPv6.
-	case "$mode" in
-		wan_first|wan_only)
-			[ -n "$MODEM6_PRIMARY" ] && ifdown "$MODEM6_PRIMARY" >/dev/null 2>&1 || true
-			interface_exists wan6 && ifup wan6 >/dev/null 2>&1 || true
-			;;
-		modem_first|modem_only)
-			interface_exists wan6 && ifdown wan6 >/dev/null 2>&1 || true
-			[ -n "$MODEM6_PRIMARY" ] && ifup "$MODEM6_PRIMARY" >/dev/null 2>&1 || true
-			;;
-	esac
+	# Route both address families through the same live exit. In priority modes
+	# this also enables IPv6 on the backup only after IPv4 has failed over.
+	sleep 1
+	align_ipv6_to_active4 || true
 	logger -t "$TAG" "applied exit policy mode=$mode"
 fi
 
