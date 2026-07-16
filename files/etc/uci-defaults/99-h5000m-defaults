@@ -36,6 +36,20 @@ if [ -x /etc/init.d/ttyd ]; then
 	/etc/init.d/ttyd disable >/dev/null 2>&1 || true
 fi
 
+if [ -e /sys/class/leds/mdio-bus:0f:red:wan ]; then
+	logger -t h5000m-defaults "Bind the red WAN LED to eth1 link and traffic"
+	uci -q set system.led_wan='led'
+	uci -q set system.led_wan.name='WAN'
+	uci -q set system.led_wan.sysfs='mdio-bus:0f:red:wan'
+	uci -q set system.led_wan.trigger='netdev'
+	uci -q set system.led_wan.dev='eth1'
+	uci -q delete system.led_wan.mode
+	uci -q add_list system.led_wan.mode='link'
+	uci -q add_list system.led_wan.mode='tx'
+	uci -q add_list system.led_wan.mode='rx'
+	uci -q commit system
+fi
+
 logger -t h5000m-defaults "Set default LAN address to 192.168.10.1"
 uci -q set network.lan.proto='static'
 uci -q set network.lan.ipaddr='192.168.10.1'

@@ -1,7 +1,14 @@
 {
-	"admin/network/h5000m_netmode": {
+	"admin/modem": {
+		"title": "Mobile Network",
+		"order": 25,
+		"action": {
+			"type": "firstchild"
+		}
+	},
+	"admin/modem/h5000m_netmode": {
 		"title": "Exit Priority",
-		"order": 90,
+		"order": 30,
 		"action": {
 			"type": "view",
 			"path": "h5000m/netmode"

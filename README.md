@@ -160,11 +160,12 @@ make -j"$(nproc)"
 - LuCI 默认语言：简体中文（`zh_cn`）
 - WiFi：沿用官方 OpenWrt 首启策略，默认不启用、不预置统一 SSID 或共享密码
 - 首次配置：通过有线 LAN 登录 LuCI，选择所在国家/地区并为各频段设置独立的强密码后再启用无线
+- WAN 红灯：绑定官方 `eth1` WAN，链路接通时点亮，收发数据时闪烁
 - 有线 WAN 优先：`wan` / `wan6` metric 为 `10`
 - 5G SIM 备用：专用管理器生成的 `MT5700M` / `MT5700Mv6` metric 为 `50`
 - 首次启动时清理构建期第三方、small_package 和 video 软件源条目
 
-离线插件仓库提供 `luci-app-h5000m-netmode`，可在 LuCI 的“网络 / 出口优先级”中切换有线 WAN 和 5G 模块的优先级。
+离线插件仓库提供 `luci-app-h5000m-netmode`，可在 LuCI 的“移动网络 / 出口优先级”中切换有线 WAN 和 5G 模块的优先级。
 
 离线插件仓库提供 `luci-app-h5000m-fancontrol`，可在 LuCI 的“系统 / 风扇控制”中设置自动、手动和仅内核保护模式，并显示 PWM、模块温度、CPU 温度和 WiFi 温度。
 
