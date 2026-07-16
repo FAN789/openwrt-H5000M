@@ -23,6 +23,49 @@ interface_exists() {
 	uci -q get "network.$1" >/dev/null 2>&1
 }
 
+append_modem_section() {
+	local section="$1"
+	[ -n "$section" ] || return 0
+	case " $MODEM_SECTIONS " in
+		*" $section "*) ;;
+		*) MODEM_SECTIONS="${MODEM_SECTIONS:+$MODEM_SECTIONS }$section" ;;
+	esac
+}
+
+discover_modem_interfaces() {
+	local modem section device
+
+	MODEM_SECTIONS=""
+	MODEM_PRIMARY=""
+	MODEM6_PRIMARY=""
+	MODEM_NETDEV=""
+
+	for modem in $(uci -q show qmodem 2>/dev/null | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
+		MODEM_NETDEV="$(uci -q get "${modem}.network" || true)"
+		[ -n "$MODEM_NETDEV" ] && break
+	done
+
+	# First find the IPv4 interface attached directly to QModem's data device.
+	for section in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\([^.]*\)=interface$/\1/p'); do
+		device="$(uci -q get "network.${section}.device" || uci -q get "network.${section}.ifname" || true)"
+		if { [ -n "$MODEM_NETDEV" ] && [ "$device" = "$MODEM_NETDEV" ]; } || \
+		   { [ -z "$MODEM_NETDEV" ] && { [ "$section" = "MT5700M" ] || [ "$section" = "USB" ]; }; }; then
+			append_modem_section "$section"
+			[ -n "$MODEM_PRIMARY" ] || MODEM_PRIMARY="$section"
+		fi
+	done
+
+	# Then include IPv6 aliases such as MT5700Mv6 -> @MT5700M.
+	if [ -n "$MODEM_PRIMARY" ]; then
+		for section in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\([^.]*\)=interface$/\1/p'); do
+			device="$(uci -q get "network.${section}.device" || uci -q get "network.${section}.ifname" || true)"
+			[ "$device" = "@${MODEM_PRIMARY}" ] || continue
+			append_modem_section "$section"
+			[ -n "$MODEM6_PRIMARY" ] || MODEM6_PRIMARY="$section"
+		done
+	fi
+}
+
 read_interface() {
 	local name="$1" json value
 
@@ -51,6 +94,19 @@ route_device() {
 	printf '%s\n' "$1" | sed -n 's/.* dev \([^ ]*\).*/\1/p'
 }
 
+has_default_route() {
+	local family="$1" device="$2"
+	[ -n "$device" ] || return 1
+	ip "-${family}" route show default 2>/dev/null | awk -v device="$device" '
+		{
+			for (i = 1; i < NF; i++)
+				if ($i == "dev" && $(i + 1) == device)
+					found = 1
+		}
+		END { exit found ? 0 : 1 }
+	'
+}
+
 device_matches() {
 	local device="$1" candidate
 	shift
@@ -74,19 +130,42 @@ route_owner() {
 }
 
 read_live_state() {
+	local modem
+	discover_modem_interfaces
+
 	read_interface wan
 	WAN_PRESENT="$IFACE_PRESENT"; WAN_UP="$IFACE_UP"; WAN_AVAILABLE="$IFACE_AVAILABLE"; WAN_DEVICE="$IFACE_DEVICE"
 	read_interface wan6
 	WAN6_PRESENT="$IFACE_PRESENT"; WAN6_UP="$IFACE_UP"; WAN6_AVAILABLE="$IFACE_AVAILABLE"; WAN6_DEVICE="$IFACE_DEVICE"
-	read_interface USB
+	read_interface "${MODEM_PRIMARY:-__missing_modem__}"
 	MODEM_PRESENT="$IFACE_PRESENT"; MODEM_UP="$IFACE_UP"; MODEM_AVAILABLE="$IFACE_AVAILABLE"; MODEM_DEVICE="$IFACE_DEVICE"
-	read_interface USBv6
+	read_interface "${MODEM6_PRIMARY:-__missing_modem6__}"
 	MODEM6_PRESENT="$IFACE_PRESENT"; MODEM6_UP="$IFACE_UP"; MODEM6_AVAILABLE="$IFACE_AVAILABLE"; MODEM6_DEVICE="$IFACE_DEVICE"
+
+	# QModem discovers the built-in MT5700M before it creates a network section.
+	# Treat that physical modem as present so a missing SIM or inactive data
+	# session is reported as disconnected, not as an unconfigured device.
+	if [ "$MODEM_PRESENT" != "1" ]; then
+		for modem in $(uci -q show qmodem 2>/dev/null | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
+			MODEM_PRESENT=1
+			MODEM_DEVICE="$(uci -q get "${modem}.network" || true)"
+			[ -n "$MODEM_DEVICE" ] || MODEM_DEVICE="$(uci -q get "${modem}.data_interface" || true)"
+			if [ -n "$MODEM_DEVICE" ] && [ -d "/sys/class/net/${MODEM_DEVICE}" ]; then
+				ip -4 addr show dev "$MODEM_DEVICE" 2>/dev/null | grep -q 'inet ' && MODEM_UP=1
+			fi
+			break
+		done
+	fi
 
 	DEFAULT4="$(ip -4 route show default 2>/dev/null | head -n 1)"
 	DEFAULT6="$(ip -6 route show default 2>/dev/null | head -n 1)"
 	ACTIVE4="$(route_owner "$(route_device "$DEFAULT4")")"
 	ACTIVE6="$(route_owner "$(route_device "$DEFAULT6")")"
+	WAN4_READY=0; WAN6_READY=0; MODEM4_READY=0; MODEM6_READY=0
+	has_default_route 4 "$WAN_DEVICE" && WAN4_READY=1
+	has_default_route 6 "${WAN6_DEVICE:-$WAN_DEVICE}" && WAN6_READY=1
+	has_default_route 4 "$MODEM_DEVICE" && MODEM4_READY=1
+	has_default_route 6 "${MODEM6_DEVICE:-$MODEM_DEVICE}" && MODEM6_READY=1
 }
 
 print_status() {
@@ -103,21 +182,27 @@ print_status() {
 	echo "wan_present=$WAN_PRESENT"
 	echo "wan_up=$WAN_UP"
 	echo "wan6_up=$WAN6_UP"
+	echo "wan4_ready=$WAN4_READY"
+	echo "wan6_ready=$WAN6_READY"
 	echo "wan_device=$WAN_DEVICE"
 	echo "modem_present=$MODEM_PRESENT"
 	echo "modem_up=$MODEM_UP"
 	echo "modem6_up=$MODEM6_UP"
+	echo "modem4_ready=$MODEM4_READY"
+	echo "modem6_ready=$MODEM6_READY"
 	echo "modem_device=$MODEM_DEVICE"
+	echo "modem_interface=$MODEM_PRIMARY"
+	echo "modem6_interface=$MODEM6_PRIMARY"
 	echo "active4=$ACTIVE4"
 	echo "active6=$ACTIVE6"
 	echo "wan_metric=$(uci -q get network.wan.metric || true)"
 	echo "wan6_metric=$(uci -q get network.wan6.metric || true)"
-	echo "usb_metric=$(uci -q get network.USB.metric || true)"
-	echo "usbv6_metric=$(uci -q get network.USBv6.metric || true)"
+	echo "usb_metric=$(uci -q get "network.${MODEM_PRIMARY}.metric" || true)"
+	echo "usbv6_metric=$(uci -q get "network.${MODEM6_PRIMARY}.metric" || true)"
 	echo "wan_defaultroute=$(uci -q get network.wan.defaultroute || echo 1)"
 	echo "wan6_defaultroute=$(uci -q get network.wan6.defaultroute || echo 1)"
-	echo "usb_defaultroute=$(uci -q get network.USB.defaultroute || echo 1)"
-	echo "usbv6_defaultroute=$(uci -q get network.USBv6.defaultroute || echo 1)"
+	echo "usb_defaultroute=$(uci -q get "network.${MODEM_PRIMARY}.defaultroute" || echo 1)"
+	echo "usbv6_defaultroute=$(uci -q get "network.${MODEM6_PRIMARY}.defaultroute" || echo 1)"
 	echo "qmodem_metric=$qmodem_metric"
 	echo "default4=$DEFAULT4"
 	echo "default6=$DEFAULT6"
@@ -153,7 +238,9 @@ release_lock() {
 }
 
 apply_policy() {
-	local wan_metric modem_metric wan_defaultroute modem_defaultroute modem
+	local wan_metric modem_metric wan_defaultroute modem_defaultroute modem section
+
+	discover_modem_interfaces
 
 	case "$mode" in
 		modem_first)
@@ -181,12 +268,13 @@ apply_policy() {
 
 	set_network_option wan metric "$wan_metric" || return 1
 	set_network_option wan6 metric "$wan_metric" || return 1
-	set_network_option USB metric "$modem_metric" || return 1
-	set_network_option USBv6 metric "$modem_metric" || return 1
+	set_network_option wan norelease 1 || return 1
 	set_network_option wan defaultroute "$wan_defaultroute" || return 1
 	set_network_option wan6 defaultroute "$wan_defaultroute" || return 1
-	set_network_option USB defaultroute "$modem_defaultroute" || return 1
-	set_network_option USBv6 defaultroute "$modem_defaultroute" || return 1
+	for section in $MODEM_SECTIONS; do
+		set_network_option "$section" metric "$modem_metric" || return 1
+		set_network_option "$section" defaultroute "$modem_defaultroute" || return 1
+	done
 	uci -q commit network || return 1
 
 	for modem in $(uci -q show qmodem | sed -n 's/^\(qmodem\.[^.]*\)=modem-device$/\1/p'); do
@@ -231,6 +319,14 @@ if [ "$action" = "apply" ] || [ "$action" = "set" ]; then
 	if ! /etc/init.d/network reload >/dev/null 2>&1; then
 		logger -t "$TAG" "network reload failed after applying mode=$mode"
 		echo "network reload failed" >&2
+		exit 1
+	fi
+	# A network reload can terminate QModem's procd child while the MT5700M
+	# keeps its internal NCM session alive. Reconcile the supervisor so future
+	# disconnects still have an active redial monitor.
+	if [ -x /etc/init.d/qmodem_network ] && ! /etc/init.d/qmodem_network reload >/dev/null 2>&1; then
+		logger -t "$TAG" "QModem supervisor reload failed after applying mode=$mode"
+		echo "QModem supervisor reload failed" >&2
 		exit 1
 	fi
 	logger -t "$TAG" "applied exit policy mode=$mode"

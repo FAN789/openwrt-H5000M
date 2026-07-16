@@ -83,6 +83,7 @@ optional_config "CONFIG_PACKAGE_luci-i18n-base-zh-cn"
 optional_config "CONFIG_PACKAGE_luci-i18n-firewall-zh-cn"
 optional_config "CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn"
 optional_config "CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn"
+require_config "CONFIG_PACKAGE_h5000m-fancontrol"
 require_config "CONFIG_PACKAGE_luci-app-h5000m-fancontrol"
 require_config "CONFIG_PACKAGE_luci-app-h5000m-netmode"
 

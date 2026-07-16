@@ -1,0 +1,80 @@
+#!/bin/sh /etc/rc.common
+
+START=81
+STOP=29
+
+detect_slot() {
+	local slot path vendor product
+
+	for slot in 1-1 2-1; do
+		path="/sys/bus/usb/devices/${slot}"
+		[ -d "$path" ] || continue
+		vendor="$(cat "$path/idVendor" 2>/dev/null || true)"
+		product="$(cat "$path/product" 2>/dev/null || true)"
+		case "${vendor}:${product}" in
+			3466:*|*:[Mm][Tt]5700*)
+				echo "$slot"
+				return 0
+				;;
+		esac
+	done
+
+	return 1
+}
+
+sync_config() {
+	local slot="$1" current_section section path identity count=0
+
+	current_section="$(printf '%s' "$slot" | tr '-' '_')"
+	for section in $(uci -q show qmodem 2>/dev/null | sed -n "s/^qmodem\.\([^.=]*\)=modem-device$/\1/p"); do
+		[ "$section" = "$current_section" ] && continue
+		path="$(uci -q get "qmodem.${section}.path" || true)"
+		identity="$(uci -q get "qmodem.${section}.name" || true) $(uci -q get "qmodem.${section}.manufacturer" || true) $(uci -q get "qmodem.${section}.platform" || true)"
+		case "${path}:${identity}" in
+			*/1-1/*:*|*/2-1/*:*|*:[Mm][Tt]5700*|*:[Hh]uawei*|*:[Hh]isilicon*)
+				uci -q delete "qmodem.${section}"
+				logger -t mt5700m-qmodem-sync "removed stale modem section=${section} active_slot=${slot}"
+				;;
+		esac
+	done
+
+	uci -q set qmodem.usb0='modem-slot'
+	uci -q set "qmodem.usb0.slot=${slot}"
+	uci -q set qmodem.usb0.type='usb'
+	uci -q set qmodem.usb0.alias='MT5700M'
+	uci -q set qmodem.main.enable_pcie_scan='0'
+	uci -q set qmodem.main.enable_usb_scan='0'
+	uci -q set qmodem.main.try_preset_pcie='0'
+	uci -q set qmodem.main.try_preset_usb='1'
+	uci -q set qmodem.main.start_delay='0'
+
+	if uci -q get "qmodem.${current_section}" >/dev/null 2>&1; then
+		uci -q set "qmodem.${current_section}.alias=MT5700M"
+		uci -q set "qmodem.${current_section}.use_ubus=1"
+	fi
+
+	for section in $(uci -q show qmodem 2>/dev/null | sed -n "s/^qmodem\.\([^.=]*\)=modem-device$/\1/p"); do
+		count=$((count + 1))
+	done
+	uci -q set "qmodem.main.modem_count=${count}"
+	uci -q commit qmodem
+}
+
+start() {
+	local slot
+
+	slot="$(detect_slot || true)"
+	[ -n "$slot" ] || {
+		logger -t mt5700m-qmodem-sync "built-in MT5700M is not enumerated"
+		return 0
+	}
+
+	sync_config "$slot"
+	if [ -x /usr/share/qmodem/modem_scan.sh ]; then
+		/usr/share/qmodem/modem_scan.sh add "$slot" usb >/dev/null 2>&1 || true
+		(
+			sleep 12
+			sync_config "$slot"
+		) &
+	fi
+}

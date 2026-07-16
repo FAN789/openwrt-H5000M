@@ -54,6 +54,19 @@ return view.extend({
 		var ca = pick(section(raw, 'NR carrier aggregation'), /\^NRRCCAPQRY:\s*3,(\d+)/, '');
 		var vonr = pick(section(raw, 'VoNR'), /\^NRRCCAPQRY:\s*2,(\d+)/, '');
 		var dssMatch = section(raw, 'DSS').match(/\^NRRCCAPQRY:\s*5,(\d+),(\d+)/);
+		var radioCode = pick(section(raw, 'Radio mode'), /^\^SYSCFGEX:\s*"?([^",\r\n]+)"?/m, '');
+		var radioLabels = {
+			'00': _('Automatic'),
+			'01': 'GSM',
+			'02': 'WCDMA',
+			'03': 'LTE',
+			'08': '5G NR',
+			'0302': 'LTE / WCDMA',
+			'030201': 'LTE / WCDMA / GSM',
+			'0803': '5G NR / LTE',
+			'080302': '5G NR / LTE / WCDMA'
+		};
+		var radioMode = radioLabels[radioCode] ? radioLabels[radioCode] + ' · ' + radioCode : radioCode;
 		var interfaceMode = pick(interfaceRaw, /Mode:\s*(\d+)/, ''), postRouteValue = pick(interfaceRaw, /PostRoute:\s*(\d+)/, '');
 		var dmzValue = pick(interfaceRaw, /Dmz:\s*([^\n]+)/, '').trim();
 
@@ -101,7 +114,7 @@ return view.extend({
 			]),
 			radio: E('div', { 'class':'mt-advanced-page', 'data-page':'radio' }, [
 				card(_('5G capabilities'), _('Configure modem radio capabilities. Changes normally require an airplane-mode cycle.'), [row(_('Carrier aggregation'),caEnabled),row(_('VoNR mode'),vonrMode),row(_('DSS rate matching'),dssRate),row(_('Additional DMRS'),dssDmrs),action(_('Apply radio capabilities'),function(){ui.showModal(_('Choose a setting to apply'),[E('p',{},_('Apply each radio capability independently to reduce the risk of an invalid combination.')),E('div',{'class':'right'},[E('button',{'type':'button','class':'btn','click':ui.hideModal},_('Cancel')),' ',E('button',{'type':'button','class':'btn','click':function(){ui.hideModal();self.confirmRun(_('Carrier aggregation'),_('Apply the selected carrier aggregation setting?'),['advanced-set','carrier-aggregation',caEnabled.value]);}},_('Carrier aggregation')),' ',E('button',{'type':'button','class':'btn','click':function(){ui.hideModal();self.confirmRun(_('VoNR mode'),_('Apply the selected VoNR mode?'),['advanced-set','vonr',vonrMode.value]);}},'VoNR'),' ',E('button',{'type':'button','class':'btn','click':function(){ui.hideModal();self.confirmRun('DSS',_('Apply the selected DSS settings?'),['advanced-set','dss',dssRate.value,dssDmrs.value]);}},'DSS')])]);})]),
-				card(_('Current radio profile'), _('Read-only values reported by the modem.'), [state(_('Radio mode'),section(raw,'Radio mode')),state(_('SIM slot'),simSlot==='0'?_('External SIM'):_('Internal SIM'))])
+				card(_('Current radio profile'), _('Read-only values reported by the modem.'), [state(_('Radio mode'),radioMode),state(_('SIM slot'),simSlot==='0'?_('External SIM'):_('Internal SIM'))])
 			]),
 			device: E('div', { 'class':'mt-advanced-page', 'data-page':'device' }, [
 				card(_('Performance and SIM'), _('Tune module performance and external SIM handling.'), [row(_('Performance profile'),performanceMode),row(_('SIM hotplug'),simHotplug),action(_('Apply device setting'),function(){ui.showModal(_('Choose a setting to apply'),[E('div',{'class':'right'},[E('button',{'type':'button','class':'btn','click':ui.hideModal},_('Cancel')),' ',E('button',{'type':'button','class':'btn','click':function(){ui.hideModal();self.confirmRun(_('Performance profile'),_('Apply the selected performance profile?'),['advanced-set','performance',performanceMode.value]);}},_('Performance')),' ',E('button',{'type':'button','class':'btn','click':function(){ui.hideModal();self.confirmRun(_('SIM hotplug'),_('Apply the selected SIM hotplug setting?'),['advanced-set','sim-hotplug',simHotplug.value]);}},_('SIM hotplug'))])]);})]),

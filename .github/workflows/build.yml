@@ -14,7 +14,7 @@ on:
       openwrt_ref:
         description: OpenWrt 版本
         required: true
-        default: main
+        default: 4fa33a07247e519b258d45bae80e5d05f7999f3b
       make_jobs:
         description: 编译线程，留空使用全部核心
         required: false
@@ -23,7 +23,7 @@ on:
         description: 清理本地增量编译目录后全量重编
         required: true
         type: boolean
-        default: false
+        default: true
       qmodem_original:
         description: "1. QModem 原版：5G 模块管理"
         required: true
@@ -73,7 +73,7 @@ on:
         description: 发布 Releases
         required: true
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: write

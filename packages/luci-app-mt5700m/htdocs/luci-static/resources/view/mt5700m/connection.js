@@ -51,10 +51,12 @@ return view.extend({
 	findModem: function() {
 		var sections = uci.sections('qmodem', 'modem-device');
 
-		return sections.find(function(section) {
+		var matches = sections.filter(function(section) {
 			var identity = [ section.name, section.alias, section.manufacturer, section.platform ].join(' ').toLowerCase();
 			return /mt5700|huawei|hisilicon/.test(identity) || section.at_port === '/dev/ttyUSB1';
-		}) || sections[0];
+		});
+
+		return matches.find(function(section) { return section.state !== 'disabled'; }) || matches[0] || sections.find(function(section) { return section.state !== 'disabled'; }) || sections[0];
 	},
 
 	load: function() {

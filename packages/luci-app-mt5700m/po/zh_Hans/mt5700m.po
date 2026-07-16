@@ -19,6 +19,9 @@ msgstr "%s 网络已就绪，模块运行正常。"
 msgid "The modem did not respond. Check the AT channel and module connection."
 msgstr "模块没有响应，请检查 AT 通道和模块连接。"
 
+msgid "The modem is online, but mobile data is not connected."
+msgstr "模块通信正常，但移动数据尚未连接。"
+
 msgid "Signal and temperature"
 msgstr "信号与温度"
 
@@ -57,6 +60,12 @@ msgstr "已连接"
 
 msgid "Disconnected"
 msgstr "未连接"
+
+msgid "Module online"
+msgstr "模块在线"
+
+msgid "Unavailable"
+msgstr "不可用"
 
 msgid "Module"
 msgstr "模块"
@@ -1032,6 +1041,9 @@ msgstr "新标签打开"
 
 msgid "5G Modem"
 msgstr "5G 模组"
+
+msgid "Automatic"
+msgstr "自动"
 
 msgid "Connection and Dialing"
 msgstr "连接与拨号"

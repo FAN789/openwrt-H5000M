@@ -1,6 +1,6 @@
 {
 	"admin/modem": {
-		"title": "Modem",
+		"title": "Mobile Network",
 		"order": 25,
 		"action": {
 			"type": "firstchild"

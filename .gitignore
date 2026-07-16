@@ -10,3 +10,8 @@ files/lib/firmware/h5000m/*.bin
 *交接报告*.md
 *完整会话日志*.md
 *总结*.md
+/.config
+/.codex-remote-attachments/
+/codex-thread-data/
+/logs/
+/outputs/

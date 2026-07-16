@@ -110,29 +110,31 @@ detect_qmodem_at_port() {
 }
 
 detect_qmodem_section() {
-	local section first value
+	local section pass state value
 
 	command -v uci >/dev/null 2>&1 || return 1
 
-	for section in $(uci -q show qmodem 2>/dev/null | sed -n "s/^qmodem\.\([^.=]*\)=modem-device$/\1/p;s/^qmodem\.\([^.=]*\)='modem-device'$/\1/p"); do
-		[ -n "${first}" ] || first="${section}"
-		for value in \
-			"$(uci -q get qmodem.${section}.at_port)" \
-			"$(uci -q get qmodem.${section}.name)" \
-			"$(uci -q get qmodem.${section}.manufacturer)" \
-			"$(uci -q get qmodem.${section}.platform)" \
-			"$(uci -q get qmodem.${section}.path)"; do
-			case "${value}" in
-				"${at_port}"|*/ttyUSB1|*[Mm][Tt]5700*|*[Hh]uawei*|*[Hh]isilicon*|*/2-1/*)
-					printf '%s\n' "${section}"
-					return 0
-					;;
-			esac
+	for pass in active any; do
+		for section in $(uci -q show qmodem 2>/dev/null | sed -n "s/^qmodem\.\([^.=]*\)=modem-device$/\1/p;s/^qmodem\.\([^.=]*\)='modem-device'$/\1/p"); do
+			state="$(uci -q get qmodem.${section}.state || true)"
+			[ "${pass}" != "active" ] || [ "${state}" != "disabled" ] || continue
+			for value in \
+				"$(uci -q get qmodem.${section}.at_port)" \
+				"$(uci -q get qmodem.${section}.name)" \
+				"$(uci -q get qmodem.${section}.manufacturer)" \
+				"$(uci -q get qmodem.${section}.platform)" \
+				"$(uci -q get qmodem.${section}.path)"; do
+				case "${value}" in
+					"${at_port}"|*/ttyUSB1|*[Mm][Tt]5700*|*[Hh]uawei*|*[Hh]isilicon*|*/1-1|*/1-1/*|*/2-1|*/2-1/*)
+						printf '%s\n' "${section}"
+						return 0
+						;;
+				esac
+			done
 		done
 	done
 
-	[ -n "${first}" ] || return 1
-	printf '%s\n' "${first}"
+	return 1
 }
 
 at_network_cmd() {

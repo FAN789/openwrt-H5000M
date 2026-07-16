@@ -14,29 +14,56 @@ uci -q commit system
 
 if [ -f /etc/config/luci ]; then
 	uci -q get luci.main >/dev/null 2>&1 || uci -q set luci.main='core'
-	uci -q set luci.main.lang='auto'
+	uci -q set luci.main.lang='zh_cn'
 	uci -q commit luci
 fi
 
-if [ -f /etc/config/upnpd ]; then
-	logger -t h5000m-defaults "Enable UPnP and NAT-PMP by default"
-	uci -q set upnpd.config.enabled='1'
-	uci -q set upnpd.config.enable_natpmp='1'
-	uci -q set upnpd.config.enable_upnp='1'
-	uci -q commit upnpd
+if [ -f /etc/config/uhttpd ]; then
+	logger -t h5000m-defaults "Redirect LuCI management traffic to HTTPS"
+	uci -q set uhttpd.main.redirect_https='1'
+	uci -q commit uhttpd
+fi
+
+if [ -f /etc/config/dropbear ]; then
+	logger -t h5000m-defaults "Disable SSH password authentication by default"
+	uci -q set dropbear.@dropbear[0].PasswordAuth='off'
+	uci -q set dropbear.@dropbear[0].RootPasswordAuth='off'
+	uci -q commit dropbear
+fi
+
+if [ -x /etc/init.d/ttyd ]; then
+	logger -t h5000m-defaults "Disable Web terminal by default"
+	/etc/init.d/ttyd disable >/dev/null 2>&1 || true
 fi
 
 logger -t h5000m-defaults "Set default LAN address to 192.168.10.1"
 uci -q set network.lan.proto='static'
 uci -q set network.lan.ipaddr='192.168.10.1'
 uci -q set network.lan.netmask='255.255.255.0'
+uci -q set network.wan.norelease='1'
 
 logger -t h5000m-defaults "Write default H5000M QModem slot"
 if [ -f /etc/config/qmodem ]; then
+	# The upstream OpenWrt device tree enumerates the built-in MT5700M on
+	# usb1/1-1, while older H5000M builds exposed the same hardware as 2-1.
+	# Prefer the currently enumerated modem and fall back to the upstream slot.
+	qmodem_slot='1-1'
+	for slot in 1-1 2-1; do
+		usb_path="/sys/bus/usb/devices/${slot}"
+		[ -d "${usb_path}" ] || continue
+		usb_vendor="$(cat "${usb_path}/idVendor" 2>/dev/null || true)"
+		usb_product="$(cat "${usb_path}/product" 2>/dev/null || true)"
+		case "${usb_vendor}:${usb_product}" in
+			3466:*|*:[Mm][Tt]5700*)
+				qmodem_slot="${slot}"
+				break
+				;;
+		esac
+	done
 	uci -q set qmodem.usb0='modem-slot'
-	uci -q set qmodem.usb0.slot='2-1'
+	uci -q set qmodem.usb0.slot="${qmodem_slot}"
 	uci -q set qmodem.usb0.type='usb'
-	uci -q set qmodem.usb0.alias='USB'
+	uci -q set qmodem.usb0.alias='MT5700M'
 	uci -q set qmodem.main.enable_pcie_scan='0'
 	uci -q set qmodem.main.enable_usb_scan='0'
 	uci -q set qmodem.main.try_preset_pcie='0'
@@ -49,79 +76,6 @@ logger -t h5000m-defaults "Apply WAN and 5G default route policy"
 if [ -x /usr/sbin/h5000m-netmode ]; then
 	/usr/sbin/h5000m-netmode >/dev/null 2>&1 || true
 fi
-
-logger -t h5000m-defaults "Set default root password"
-if command -v chpasswd >/dev/null 2>&1; then
-	echo 'root:admin' | chpasswd
-else
-	(printf 'admin\nadmin\n' | passwd root) >/dev/null 2>&1 || true
-fi
-
-logger -t h5000m-defaults "Set separated default WiFi SSIDs and password"
-if ! uci -q show wireless | grep -q '=wifi-iface'; then
-	wifi config >/dev/null 2>&1 || true
-fi
-
-for radio in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-device$/\1/p'); do
-	band="$(uci -q get "${radio}.band")"
-	uci -q set "${radio}.country=CN"
-	case "${band}" in
-		2g)
-			uci -q set "${radio}.disabled=0"
-			uci -q set "${radio}.htmode=EHT40"
-			;;
-		5g)
-			uci -q set "${radio}.disabled=0"
-			uci -q set "${radio}.htmode=EHT160"
-			;;
-		*)
-			uci -q set "${radio}.disabled=0"
-			;;
-	esac
-done
-
-wifi_index=2
-for section in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-iface$/\1/p'); do
-	device="$(uci -q get "${section}.device")"
-	band="$(uci -q get "wireless.${device}.band")"
-	case "${band}" in
-		2g)
-			uci -q set "${section}.ssid=H5000M-2G"
-			;;
-		5g|6g)
-			uci -q set "${section}.ssid=H5000M-5G"
-			;;
-		*)
-			uci -q set "${section}.ssid=H5000M"
-			;;
-	esac
-	uci -q set "${section}.encryption=sae-mixed"
-	uci -q set "${section}.key=77778888"
-	uci -q set "${section}.ieee80211w=1"
-	uci -q set "${section}.ieee80211k=1"
-	uci -q set "${section}.rrm_neighbor_report=1"
-	uci -q set "${section}.rrm_beacon_report=1"
-	case "${band}" in
-		*)
-			uci -q set "${section}.disabled=0"
-			;;
-	esac
-	if valid_mac "${lan_mac:-}"; then
-		case "${band}" in
-			2g)
-				uci -q set "${section}.macaddr=${wifi24_mac}"
-				;;
-			5g|6g)
-				uci -q set "${section}.macaddr=${wifi5_mac}"
-				;;
-			*)
-				uci -q set "${section}.macaddr=$(mac_add "${lan_mac}" "${wifi_index}")"
-				wifi_index=$((wifi_index + 1))
-				;;
-		esac
-	fi
-done
-uci -q commit wireless
 
 logger -t h5000m-defaults "Remove build-only apk feed entries"
 if [ -f /etc/apk/repositories.d/distfeeds.list ]; then

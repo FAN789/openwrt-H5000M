@@ -6,10 +6,26 @@ uci -q set system.@system[0].hostname='H5000M'
 uci -q set system.@system[0].zonename='Asia/Shanghai'
 uci -q set system.@system[0].timezone='CST-8'
 uci -q set luci.main.lang='zh_cn'
-uci -q set network.lan.ipaddr='192.168.10.1'
+uci -q set network.lan.ipaddr='192.168.10.1/24'
+uci -q set network.wan.norelease='1'
+
+if [ -f /etc/config/uhttpd ]; then
+	uci -q set uhttpd.main.redirect_https='1'
+fi
+
+if [ -f /etc/config/dropbear ]; then
+	uci -q set dropbear.@dropbear[0].PasswordAuth='off'
+	uci -q set dropbear.@dropbear[0].RootPasswordAuth='off'
+fi
+
+if [ -x /etc/init.d/ttyd ]; then
+	/etc/init.d/ttyd disable >/dev/null 2>&1 || true
+fi
 
 uci -q commit system
 uci -q commit luci
 uci -q commit network
+uci -q commit uhttpd
+uci -q commit dropbear
 
 exit 0

@@ -2,12 +2,10 @@
 luci
 luci-ssl
 luci-app-package-manager
-luci-app-attendedsysupgrade
 luci-app-ttyd
 luci-i18n-base-zh-cn
 luci-i18n-firewall-zh-cn
 luci-i18n-package-manager-zh-cn
-luci-i18n-attendedsysupgrade-zh-cn
 luci-i18n-ttyd-zh-cn
 
 # Common administration and diagnostics

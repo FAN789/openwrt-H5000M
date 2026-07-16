@@ -9,6 +9,34 @@ uci -q set mt5700m.settings.port="$(uci -q get mt5700m.settings.port || echo 202
 uci -q set mt5700m.settings.timeout="$(uci -q get mt5700m.settings.timeout || echo 8)"
 uci -q commit mt5700m
 
+# Keep QModem's preset slot aligned with the built-in modem. Official OpenWrt
+# enumerates it as 1-1; older H5000M kernels used 2-1. This also migrates a
+# preserved configuration when the plugin is upgraded after switching kernels.
+if [ -f /etc/config/qmodem ]; then
+	qmodem_slot='1-1'
+	for slot in 1-1 2-1; do
+		usb_path="/sys/bus/usb/devices/${slot}"
+		[ -d "${usb_path}" ] || continue
+		usb_vendor="$(cat "${usb_path}/idVendor" 2>/dev/null || true)"
+		usb_product="$(cat "${usb_path}/product" 2>/dev/null || true)"
+		case "${usb_vendor}:${usb_product}" in
+			3466:*|*:[Mm][Tt]5700*)
+				qmodem_slot="${slot}"
+				break
+				;;
+		esac
+	done
+	uci -q set qmodem.usb0='modem-slot'
+	uci -q set qmodem.usb0.slot="${qmodem_slot}"
+	uci -q set qmodem.usb0.type='usb'
+	uci -q set qmodem.usb0.alias='MT5700M'
+	uci -q set qmodem.main.enable_pcie_scan='0'
+	uci -q set qmodem.main.enable_usb_scan='0'
+	uci -q set qmodem.main.try_preset_pcie='0'
+	uci -q set qmodem.main.try_preset_usb='1'
+	uci -q set qmodem.main.start_delay='0'
+fi
+
 # QModem and this manager must share at-daemon instead of opening the modem
 # serial device independently. Limit the setting to the MT5700M section.
 for section in $(uci -q show qmodem 2>/dev/null | sed -n "s/^qmodem\.\([^.=]*\)=modem-device$/\1/p;s/^qmodem\.\([^.=]*\)='modem-device'$/\1/p"); do
@@ -20,11 +48,28 @@ for section in $(uci -q show qmodem 2>/dev/null | sed -n "s/^qmodem\.\([^.=]*\)=
 		"$(uci -q get qmodem.${section}.platform)" \
 		"$(uci -q get qmodem.${section}.path)"; do
 		case "${value}" in
-			*/ttyUSB1|*[Mm][Tt]5700*|*[Hh]uawei*|*[Hh]isilicon*|*/2-1/*) match=1 ;;
+			*/ttyUSB1|*[Mm][Tt]5700*|*[Hh]uawei*|*[Hh]isilicon*|*/1-1|*/1-1/*|*/2-1|*/2-1/*) match=1 ;;
 		esac
 	done
 	[ "${match}" = "1" ] && uci -q set qmodem.${section}.use_ubus='1'
 done
 uci -q commit qmodem
+
+if [ -z "${IPKG_INSTROOT:-}" ]; then
+	# Make the newly installed ACL and menu visible without requiring a reboot.
+	rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null || true
+	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
+	[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1 || true
+
+	# QModem may have started before this package created the H5000M preset.
+	# Queue discovery only after its scanner is ready, avoiding a restart race.
+	if [ -n "${qmodem_slot:-}" ] && [ -x /usr/share/qmodem/modem_scan.sh ]; then
+		(sleep 2; /usr/share/qmodem/modem_scan.sh add "${qmodem_slot}" usb >/dev/null 2>&1) &
+	fi
+	if [ -x /etc/init.d/mt5700m-qmodem-sync ]; then
+		/etc/init.d/mt5700m-qmodem-sync enable >/dev/null 2>&1 || true
+		/etc/init.d/mt5700m-qmodem-sync start >/dev/null 2>&1 || true
+	fi
+fi
 
 exit 0

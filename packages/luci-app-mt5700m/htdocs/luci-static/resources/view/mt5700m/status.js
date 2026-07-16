@@ -13,20 +13,37 @@ return view.extend({
 	load: function() {
 		return uci.load('qmodem').then(function() {
 			var sections = uci.sections('qmodem', 'modem-device');
-			var modem = sections.find(function(section) {
+			var matches = sections.filter(function(section) {
 				var identity = [ section.name, section.alias, section.manufacturer, section.platform ].join(' ').toLowerCase();
 				return /mt5700|huawei|hisilicon/.test(identity) || section.at_port === '/dev/ttyUSB1';
-			}) || sections[0];
+			});
+			var modem = matches.find(function(section) { return section.state !== 'disabled'; }) || matches[0] || sections.find(function(section) { return section.state !== 'disabled'; }) || sections[0];
 
 			if (!modem)
 				throw new Error(_('No QModem modem was found.'));
 
-			return Promise.all([
-				callBaseInfo(modem['.name']),
-				callCellInfo(modem['.name']),
-				callDialStatus(modem['.name'])
-			]).then(function(results) {
-				return { qmodem: true, modem: modem, base: results[0], cell: results[1], dial: results[2] };
+			/* The native helper obtains one coherent snapshot through at-daemon.
+			 * Running QModem base_info and cell_info in parallel makes both paths
+			 * compete for the same serial channel and occasionally returns a
+			 * partial page. Read the snapshot first, then add the lightweight
+			 * QModem connection state. */
+			return fs.exec('/usr/sbin/mt5700m-at', [ 'status' ]).then(function(nativeStatus) {
+				return Promise.all([
+					callBaseInfo(modem['.name']).catch(function() { return {}; }),
+					callDialStatus(modem['.name']).catch(function() { return {}; })
+				]).then(function(results) {
+					return { qmodem: true, modem: modem, native: nativeStatus, base: results[0], dial: results[1] };
+				});
+			}, function(nativeError) {
+				return Promise.all([
+					callBaseInfo(modem['.name']),
+					callCellInfo(modem['.name']),
+					callDialStatus(modem['.name'])
+				]).then(function(results) {
+					return { qmodem: true, modem: modem, base: results[0], cell: results[1], dial: results[2] };
+				}, function() {
+					return { stdout: '', stderr: nativeError.message || String(nativeError) };
+				});
 			});
 		}).catch(function(err) {
 			return fs.exec('/usr/sbin/mt5700m-at', [ 'status' ]).catch(function(fallbackErr) {
@@ -37,6 +54,14 @@ return view.extend({
 
 	parseStatus: function(res) {
 		var data = {};
+		var parseOutput = function(output) {
+			(output || '').trim().split(/\n/).forEach(function(line) {
+				var pos = line.indexOf('=');
+
+				if (pos > -1)
+					data[line.substring(0, pos)] = line.substring(pos + 1);
+			});
+		};
 		var collect = function(entries) {
 			(entries || []).forEach(function(entry) {
 				if (entry && entry.key != null)
@@ -45,17 +70,26 @@ return view.extend({
 		};
 
 		if (res.qmodem) {
+			if (res.native)
+				parseOutput(res.native.stdout);
+
+			data.reachable = data.connected === '1' ? '1' : '0';
 			collect(res.base && res.base.modem_info);
 			collect(res.cell && res.cell.modem_info);
 			data.model = data.name || res.modem.name || 'MT5700M';
 			data.revision = data.revision || '';
 			data.at_port = data.at_port || res.modem.at_port || '';
 			data.temperature = String(data.temperature || '').replace(/[^0-9.-]/g, '');
-			data.sysmode_detail = data.network_mode || '';
-			data.rsrp = data.RSRP || '';
-			data.rsrq = data.RSRQ || '';
-			data.sinr = data.SINR || '';
-			data.connected = /^(yes|connected|1|true)$/i.test(String(data.connect_status || '')) ? '1' : '0';
+			/* QModem reports these fields with upper-case keys, while the native
+			 * MT5700M snapshot uses lower-case keys. Keep the native values when
+			 * QModem omits a field instead of replacing them with an empty string. */
+			data.sysmode_detail = data.network_mode || data.sysmode_detail || data.sysmode || '';
+			data.rsrp = data.RSRP || data.rsrp || '';
+			data.rsrq = data.RSRQ || data.rsrq || '';
+			data.sinr = data.SINR || data.sinr || '';
+			if (data.reachable !== '1' && (data.name || data.revision || data.at_port))
+				data.reachable = '1';
+			data.connected = /^(yes|connected|1|true)$/i.test(String(data.connect_status || data.connected || '')) ? '1' : '0';
 			data.dial_running = String((res.dial || {}).running || '') === 'true' ? '1' : '0';
 			data.network_interface = res.modem.network || res.modem.data_interface || '';
 			data.channel = 'serial';
@@ -63,13 +97,10 @@ return view.extend({
 			return data;
 		}
 
-		(res.stdout || '').trim().split(/\n/).forEach(function(line) {
-			var pos = line.indexOf('=');
+		parseOutput(res.stdout);
 
-			if (pos > -1)
-				data[line.substring(0, pos)] = line.substring(pos + 1);
-		});
-
+		data.reachable = data.connected === '1' ? '1' : '0';
+		data.connected = data.reachable === '1' && !/^(|NOSERVICE|NO SERVICE|UNKNOWN)$/i.test(data.sysmode || data.sysmode_detail || '') ? '1' : '0';
 		data.error = res.stderr || '';
 		data.backend = _('Direct AT fallback');
 		return data;
@@ -86,6 +117,7 @@ return view.extend({
 			'.mt5700m-summary{font-size:14px;line-height:1.5;opacity:.88}',
 			'.mt5700m-status{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:13px;font-weight:650;white-space:nowrap;backdrop-filter:blur(4px)}',
 			'.mt5700m-dot{width:8px;height:8px;border-radius:50%;background:#ffcd57;box-shadow:0 0 0 4px rgba(255,205,87,.18)}',
+			'.mt5700m-status.is-reachable .mt5700m-dot{background:#ffcd57;box-shadow:0 0 0 4px rgba(255,205,87,.18)}',
 			'.mt5700m-status.is-online .mt5700m-dot{background:#78f2b0;box-shadow:0 0 0 4px rgba(120,242,176,.18)}',
 			'.mt5700m-hero-meta{position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:22px;font-size:13px}',
 			'.mt5700m-meta{display:flex;gap:7px;align-items:center}',
@@ -186,11 +218,15 @@ return view.extend({
 
 	render: function(res) {
 		var data = this.parseStatus(res);
+		var reachable = data.reachable === '1';
 		var connected = data.connected === '1';
 		var rsrp = parseFloat(data.rsrp);
 		var rsrq = parseFloat(data.rsrq);
 		var sinr = parseFloat(data.sinr);
 		var temp = parseFloat(data.temperature);
+		var operator = data.operator || '';
+		if (!/[A-Za-z0-9\u4e00-\u9fff]/.test(operator))
+			operator = '';
 		var channel = data.channel === 'serial'
 			? '%s · %s'.format(_('Serial Port'), data.at_port || _('Auto'))
 			: '%s · %s:%s'.format(_('Network TCP'), data.host || '192.168.8.1', data.port || '20249');
@@ -202,14 +238,16 @@ return view.extend({
 				E('div', { 'class': 'mt5700m-hero-top' }, [
 					E('div', {}, [
 						E('div', { 'class': 'mt5700m-eyebrow' }, _('Mobile Network')),
-						E('h2', { 'class': 'mt5700m-title' }, data.operator || data.model || 'MT5700M'),
-						E('div', { 'class': 'mt5700m-summary' }, connected
-							? _('%s network is available and the modem is operating normally.').format(data.sysmode_detail || data.sysmode || '5G')
-							: _('The modem did not respond. Check the AT channel and module connection.'))
+						E('h2', { 'class': 'mt5700m-title' }, operator || data.model || 'MT5700M'),
+						E('div', { 'class': 'mt5700m-summary' }, !reachable
+							? _('The modem did not respond. Check the AT channel and module connection.')
+							: connected
+								? _('%s network is available and the modem is operating normally.').format(data.sysmode_detail || data.sysmode || '5G')
+								: _('The modem is online, but mobile data is not connected.'))
 					]),
-					E('div', { 'class': 'mt5700m-status' + (connected ? ' is-online' : '') }, [
+					E('div', { 'class': 'mt5700m-status' + (connected ? ' is-online' : reachable ? ' is-reachable' : '') }, [
 						E('span', { 'class': 'mt5700m-dot' }),
-						connected ? _('Connected') : _('Disconnected')
+						connected ? _('Connected') : reachable ? _('Module online') : _('Unavailable')
 					])
 				]),
 				E('div', { 'class': 'mt5700m-hero-meta' }, [

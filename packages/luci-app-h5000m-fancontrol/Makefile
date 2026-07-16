@@ -2,10 +2,10 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-h5000m-fancontrol
 PKG_VERSION:=2.0.0
-PKG_RELEASE:=4
+PKG_RELEASE:=6
 
 LUCI_TITLE:=H5000M fan control
-LUCI_DEPENDS:=+luci-base +kmod-hwmon-pwmfan
+LUCI_DEPENDS:=+luci-base +h5000m-fancontrol
 LUCI_PKGARCH:=all
 
 include $(TOPDIR)/feeds/luci/luci.mk

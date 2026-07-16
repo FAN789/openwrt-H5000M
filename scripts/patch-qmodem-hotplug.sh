@@ -7,6 +7,8 @@ USB_HOTPLUG=""
 QMODEM_NETWORK=""
 QMODEM_LED=""
 QMODEM_CONTROLLER=""
+QMODEM_DIAL=""
+QMODEM_MAKEFILE=""
 
 for candidate in \
   "${SRC_DIR}/package/feeds/qmodem/qmodem/files/etc/hotplug.d/net/20-modem-net" \
@@ -151,6 +153,26 @@ for candidate in \
 done
 
 for candidate in \
+  "${SRC_DIR}/package/feeds/qmodem/qmodem/files/usr/share/qmodem/modem_dial.sh" \
+  "${SRC_DIR}/feeds/qmodem/application/qmodem/files/usr/share/qmodem/modem_dial.sh" \
+  "${SRC_DIR}/feeds/qmodem/qmodem/files/usr/share/qmodem/modem_dial.sh"; do
+  if [ -f "${candidate}" ]; then
+    QMODEM_DIAL="${candidate}"
+    break
+  fi
+done
+
+for candidate in \
+  "${SRC_DIR}/package/feeds/qmodem/qmodem/Makefile" \
+  "${SRC_DIR}/feeds/qmodem/application/qmodem/Makefile" \
+  "${SRC_DIR}/feeds/qmodem/qmodem/Makefile"; do
+  if [ -f "${candidate}" ]; then
+    QMODEM_MAKEFILE="${candidate}"
+    break
+  fi
+done
+
+for candidate in \
   "${SRC_DIR}/package/feeds/qmodem/qmodem/files/etc/init.d/qmodem_led" \
   "${SRC_DIR}/feeds/qmodem/application/qmodem/files/etc/init.d/qmodem_led" \
   "${SRC_DIR}/feeds/qmodem/qmodem/files/etc/init.d/qmodem_led"; do
@@ -172,7 +194,7 @@ anchor = '[ -z "${DEVPATH}" ] && exit\n'
 insert = r'''
 
 # H5000M_QMODEM_HOTPLUG_FILTER
-# H5000M uses the USB NCM modem at slot 2-1.  WiFi AP interfaces and normal
+# H5000M uses the built-in USB NCM modem. WiFi AP interfaces and normal
 # Ethernet devices also trigger net hotplug events; do not let QModem scan them
 # as PCIe modems.
 case "${INTERFACE}" in
@@ -222,9 +244,10 @@ text = path.read_text(encoding="utf-8")
 
 anchor = 'slot=$(basename "${DEVPATH}")\n'
 insert = r'''# H5000M_QMODEM_USB_SLOT_FILTER
-# Only the built-in 5G module at USB slot 2-1 should be auto-scanned.
+# Only the built-in 5G module should be auto-scanned. Depending on xHCI bus
+# enumeration it appears as 1-1 or 2-1 on otherwise identical H5000M boots.
 case "$(basename "${DEVPATH}")" in
-    2-1)
+    1-1|2-1)
         ;;
     *)
         exit
@@ -298,6 +321,42 @@ else
   echo "Skipped QModem LED service guard: file missing or already patched."
 fi
 
+if [ -n "${QMODEM_NETWORK}" ] && ! grep -q "H5000M_QMODEM_QUIET_KILL" "${QMODEM_NETWORK}"; then
+  python3 - "${QMODEM_NETWORK}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+anchor = '''_hang()
+{
+    procd_kill $service "modem_$1"
+    /usr/share/qmodem/modem_dial.sh "$1" hang
+    logger -t qmodem_network "Modem $1 Stop Dial and Hang"
+}
+'''
+replacement = '''_hang()
+{
+    # H5000M_QMODEM_QUIET_KILL
+    # Redial is intentionally idempotent. A package upgrade or an already
+    # exited monitor may leave no procd instance to delete; that is not an
+    # operator-facing error and must not leak shell noise into the LuCI RPC.
+    procd_kill "$service" "modem_$1" >/dev/null 2>&1 || true
+    /usr/share/qmodem/modem_dial.sh "$1" hang >/dev/null 2>&1 || true
+    logger -t qmodem_network "Modem $1 Stop Dial and Hang"
+}
+'''
+
+if anchor not in text:
+    raise SystemExit(f"missing QModem hang anchor in {path}")
+
+path.write_text(text.replace(anchor, replacement, 1), encoding="utf-8")
+PY
+  echo "Applied QModem idempotent redial cleanup: ${QMODEM_NETWORK}"
+else
+  echo "Skipped QModem idempotent redial cleanup: file missing or already patched."
+fi
+
 if [ -n "${QMODEM_LED}" ] && ! grep -q "H5000M_QMODEM_LED_EMPTY_GUARD" "${QMODEM_LED}"; then
   python3 - "${QMODEM_LED}" <<'PY'
 from pathlib import Path
@@ -339,4 +398,126 @@ PY
   echo "Applied QModem LED empty-instance guard: ${QMODEM_LED}"
 else
   echo "Skipped QModem LED empty-instance guard: file missing or already patched."
+fi
+
+if [ -n "${QMODEM_DIAL}" ] && ! grep -q "H5000M_QMODEM_DHCP_NORELEASE_V2" "${QMODEM_DIAL}"; then
+  python3 - "${QMODEM_DIAL}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+
+anchor = '''            uci set network.${interface_name}.proto="${proto}"
+            uci set network.${interface_name}.defaultroute='1'
+'''
+v1 = '''            uci set network.${interface_name}.proto="${proto}"
+            # H5000M_QMODEM_DHCP_NORELEASE
+            # The built-in MT5700M always reuses its internal NCM lease.
+            # Releasing it while netifd tears down the interface races the
+            # final DHCP callback and emits a misleading notify_proto error.
+            if [ "$manufacturer" = "huawei" ] && [ "$platform" = "hisilicon" ] && \\
+               [ "$modem_netcard" = "eth2" ] && [ "$bridge_enabled" != "1" ]; then
+                uci set network.${interface_name}.norelease='1'
+            fi
+            uci set network.${interface_name}.defaultroute='1'
+'''
+replacement = '''            uci set network.${interface_name}.proto="${proto}"
+            # H5000M_QMODEM_DHCP_NORELEASE_V2
+            # The built-in MT5700M always reuses its internal NCM lease.
+            # Releasing it while netifd tears down the interface races the
+            # final DHCP callback and emits a misleading notify_proto error.
+            case "${driver}:${modem_netcard}:${bridge_enabled}" in
+                ncm:eth2:0)
+                    uci set network.${interface_name}.norelease='1'
+                    ;;
+            esac
+            uci set network.${interface_name}.defaultroute='1'
+'''
+
+if v1 in text:
+    text = text.replace(v1, replacement, 1)
+elif anchor in text:
+    text = text.replace(anchor, replacement, 1)
+else:
+    raise SystemExit(f"missing QModem DHCP interface anchor in {path}")
+
+path.write_text(text, encoding="utf-8")
+PY
+  echo "Applied QModem MT5700M DHCP release guard: ${QMODEM_DIAL}"
+else
+  echo "Skipped QModem MT5700M DHCP release guard: file missing or already patched."
+fi
+
+if [ -n "${QMODEM_DIAL}" ] && ! grep -q "H5000M_QMODEM_KEEP_AUTODIAL" "${QMODEM_DIAL}"; then
+  python3 - "${QMODEM_DIAL}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+anchor = '''ecm_hang()
+{
+    m_debug "ecm_hang"
+'''
+replacement = '''ecm_hang()
+{
+    m_debug "ecm_hang"
+    # H5000M_QMODEM_KEEP_AUTODIAL
+    # MT5700M-CN maintains the NCM data session internally. Its firmware
+    # rejects the generic Huawei AT^NDISDUP=0,0 command, so a host-side
+    # redial should only recycle the OpenWrt interfaces and DHCP clients.
+    case "${manufacturer}:${platform}" in
+        huawei:hisilicon)
+            m_debug "keep MT5700M internal auto-dial session active"
+            return 0
+            ;;
+    esac
+'''
+
+if anchor not in text:
+    raise SystemExit(f"missing QModem ECM hang anchor in {path}")
+
+path.write_text(text.replace(anchor, replacement, 1), encoding="utf-8")
+PY
+  echo "Applied QModem MT5700M internal auto-dial guard: ${QMODEM_DIAL}"
+else
+  echo "Skipped QModem MT5700M internal auto-dial guard: file missing or already patched."
+fi
+
+if [ -n "${QMODEM_MAKEFILE}" ] && ! grep -q '^PKG_RELEASE:=6$' "${QMODEM_MAKEFILE}"; then
+  python3 - "${QMODEM_MAKEFILE}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+anchor = 'PKG_RELEASE:=$(QMODEM_RELEASE)\n'
+v1 = '''# H5000M_QMODEM_PACKAGE_RELEASE
+# Distinguish the device-specific reliability patch from the upstream feed.
+PKG_RELEASE:=4
+'''
+v2 = '''# H5000M_QMODEM_PACKAGE_RELEASE
+# Distinguish the device-specific reliability patch from the upstream feed.
+PKG_RELEASE:=5
+'''
+replacement = '''# H5000M_QMODEM_PACKAGE_RELEASE
+# Distinguish the device-specific reliability patch from the upstream feed.
+PKG_RELEASE:=6
+'''
+
+if v2 in text:
+    text = text.replace(v2, replacement, 1)
+elif v1 in text:
+    text = text.replace(v1, replacement, 1)
+elif anchor in text:
+    text = text.replace(anchor, replacement, 1)
+else:
+    raise SystemExit(f"missing QModem package release anchor in {path}")
+
+path.write_text(text, encoding="utf-8")
+PY
+  echo "Applied QModem H5000M package release: ${QMODEM_MAKEFILE}"
+else
+  echo "Skipped QModem H5000M package release: file missing or already patched."
 fi

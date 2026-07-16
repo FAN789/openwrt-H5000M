@@ -113,6 +113,8 @@ return view.extend({
 		var present = modem ? data.modem_present : data.wan_present;
 		var up4 = modem ? data.modem_up : data.wan_up;
 		var up6 = modem ? data.modem6_up : data.wan6_up;
+		var ready4 = modem ? (data.modem4_ready || up4) : (data.wan4_ready || up4);
+		var ready6 = modem ? (data.modem6_ready || up6) : (data.wan6_ready || up6);
 		var order = this.modeOrder(this.pendingMode);
 		var selected = order.indexOf(kind) > -1;
 		var active4 = data.active4 === kind;
@@ -139,8 +141,8 @@ return view.extend({
 				E('div', { 'class': 'h5net-state ' + state.cls }, state.label)
 			]),
 			E('div', { 'class': 'h5net-protos' }, [
-				E('span', { 'class': 'h5net-proto' + (active4 ? ' current' : '') }, active4 ? _('IPv4 in use') : (up4 === '1' ? _('IPv4 ready') : _('IPv4 unavailable'))),
-				E('span', { 'class': 'h5net-proto' + (active6 ? ' current' : '') }, active6 ? _('IPv6 in use') : (up6 === '1' ? _('IPv6 ready') : _('IPv6 unavailable')))
+				E('span', { 'class': 'h5net-proto' + (active4 ? ' current' : '') }, active4 ? _('IPv4 in use') : (ready4 === '1' ? _('IPv4 ready') : _('IPv4 unavailable'))),
+				E('span', { 'class': 'h5net-proto' + (active6 ? ' current' : '') }, active6 ? _('IPv6 in use') : (ready6 === '1' ? _('IPv6 ready') : _('IPv6 unavailable')))
 			])
 		]);
 	},

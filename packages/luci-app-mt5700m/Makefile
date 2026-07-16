@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-mt5700m
 PKG_VERSION:=1.7.1
-PKG_RELEASE:=2
+PKG_RELEASE:=9
 
 LUCI_TITLE:=MT5700M and QModem unified management
 LUCI_DEPENDS:=+luci-base +busybox +qmodem

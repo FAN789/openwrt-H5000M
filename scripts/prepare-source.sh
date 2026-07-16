@@ -3,7 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_DIR="${OPENWRT_SRC_DIR:-${ROOT_DIR}/openwrt}"
-REF="${1:-${OPENWRT_REF:-main}}"
+LOCKED_REF="$(tr -d '[:space:]' < "${ROOT_DIR}/configs/openwrt.ref")"
+REF="${1:-${OPENWRT_REF:-${LOCKED_REF}}}"
+QMODEM_REF="$(tr -d '[:space:]' < "${ROOT_DIR}/configs/qmodem.ref")"
 REPO_URL="${OPENWRT_REPO:-https://github.com/openwrt/openwrt.git}"
 
 INCLUDE_QMODEM_ORIGINAL="${INCLUDE_QMODEM_ORIGINAL:-${INCLUDE_QMODEM:-false}}"
@@ -32,7 +34,9 @@ if [ -d "${SRC_DIR}/.git" ]; then
   if ! git -C "${SRC_DIR}" ls-files --error-unmatch "${legacy_dts}" >/dev/null 2>&1; then
     rm -f "${SRC_DIR}/${legacy_dts}"
   fi
-  if git -C "${SRC_DIR}" rev-parse --verify --quiet "refs/tags/${REF}^{commit}" >/dev/null; then
+  if git -C "${SRC_DIR}" rev-parse --verify --quiet "${REF}^{commit}" >/dev/null; then
+    git -C "${SRC_DIR}" checkout --detach "${REF}^{commit}"
+  elif git -C "${SRC_DIR}" rev-parse --verify --quiet "refs/tags/${REF}^{commit}" >/dev/null; then
     git -C "${SRC_DIR}" checkout --detach "refs/tags/${REF}^{commit}"
   else
     git -C "${SRC_DIR}" fetch --tags --depth=1 origin "${REF}"
@@ -93,7 +97,7 @@ fi
 
 if [ "${INCLUDE_QMODEM_ORIGINAL}" = "true" ] || [ "${INCLUDE_QMODEM_NEXT}" = "true" ]; then
   echo "添加 QModem 第三方 feed：FUjr/QModem"
-  append_feed_once "src-git qmodem https://github.com/FUjr/QModem.git"
+  append_feed_once "src-git qmodem https://github.com/FUjr/QModem.git^${QMODEM_REF}"
 fi
 
 if [ "${need_small_package}" = "true" ]; then
