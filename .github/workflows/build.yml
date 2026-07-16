@@ -336,6 +336,8 @@ jobs:
         run: |
           find bin/targets/mediatek/filogic -maxdepth 1 -type f -name 'mt798*-ram-*-bl2.bin' -delete
           find bin/targets/mediatek/filogic -maxdepth 1 -type f -name 'mt798*-ram-*-bl2.bin' -print
+          cd bin/targets/mediatek/filogic
+          find . -maxdepth 1 -type f ! -name sha256sums -print0 | sort -z | xargs -0 sha256sum > sha256sums
 
       - name: 上传固件
         uses: actions/upload-artifact@v4
