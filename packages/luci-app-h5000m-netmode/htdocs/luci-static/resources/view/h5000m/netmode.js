@@ -156,10 +156,14 @@ return view.extend({
 		if (active === 'none') return _('No default route is currently available. Check the cable or 5G connection.');
 		if (mode === 'wan_only' || mode === 'modem_only')
 			return _('Only %s is enabled by the current policy.').format(this.exitLabel(preferred));
+		if (active === fallback && data.active6 === 'none')
+			return _('%s is unavailable, so IPv4 has switched to %s. IPv6 remains disabled to avoid splitting traffic across two exits.').format(this.exitLabel(preferred), this.exitLabel(fallback));
 		if (active === fallback)
 			return _('%s is unavailable, so traffic has switched to %s.').format(this.exitLabel(preferred), this.exitLabel(fallback));
+		if (active === preferred && data.active6 === 'none')
+			return _('IPv4 is using %s. IPv6 is unavailable on the preferred exit, so fallback IPv6 is disabled to avoid splitting traffic.').format(this.exitLabel(preferred));
 		if (active === preferred)
-			return _('Traffic is using the preferred exit. The fallback will take over when needed.');
+			return _('IPv4 and IPv6 are using the preferred exit. The fallback will take over when needed.');
 		return _('Traffic is currently using another default route.');
 	},
 

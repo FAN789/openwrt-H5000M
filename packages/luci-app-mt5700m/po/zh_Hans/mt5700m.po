@@ -1170,3 +1170,57 @@ msgstr "状态暂不可用"
 
 msgid "Message operation failed."
 msgstr "短信操作失败。"
+
+msgid "No data"
+msgstr "暂无数据"
+
+msgid "Excellent"
+msgstr "优秀"
+
+msgid "Good"
+msgstr "良好"
+
+msgid "Fair"
+msgstr "一般"
+
+msgid "Weak"
+msgstr "较弱"
+
+msgid "Normal"
+msgstr "正常"
+
+msgid "Warm"
+msgstr "偏高"
+
+msgid "Hot"
+msgstr "过高"
+
+msgid "Single carrier"
+msgstr "单载波"
+
+msgid "Aggregating"
+msgstr "聚合中"
+
+msgid "Radio link"
+msgstr "无线链路"
+
+msgid "Current mode"
+msgstr "当前模式"
+
+msgid "Downlink bandwidth"
+msgstr "下行总带宽"
+
+msgid "Uplink bandwidth"
+msgstr "上行总带宽"
+
+msgid "Current carrier information is unavailable."
+msgstr "暂未获取到当前载波信息。"
+
+msgid "%s is active with %d carriers."
+msgstr "%s 已启用，当前聚合 %d 个载波。"
+
+msgid "%s is currently using one carrier."
+msgstr "%s 当前使用单载波。"
+
+msgid "Carrier aggregation is scheduled by the mobile network on demand. Only the primary carrier may appear while idle."
+msgstr "载波聚合由运营商网络按需调度；空闲时可能只显示主载波。"

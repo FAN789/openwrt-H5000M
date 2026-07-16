@@ -138,8 +138,14 @@ msgstr "当前策略仅启用了 %s。"
 msgid "%s is unavailable, so traffic has switched to %s."
 msgstr "%s 当前不可用，流量已自动切换到 %s。"
 
-msgid "Traffic is using the preferred exit. The fallback will take over when needed."
-msgstr "流量正在使用首选出口；首选出口不可用时，备用出口会自动接管。"
+msgid "%s is unavailable, so IPv4 has switched to %s. IPv6 remains disabled to avoid splitting traffic across two exits."
+msgstr "%s 当前不可用，IPv4 已自动切换到 %s；为避免双栈分流，备用线路的 IPv6 保持停用。"
+
+msgid "IPv4 is using %s. IPv6 is unavailable on the preferred exit, so fallback IPv6 is disabled to avoid splitting traffic."
+msgstr "IPv4 正在使用 %s；首选线路没有可用 IPv6，因此备用线路 IPv6 已自动停用，避免流量分走两条线路。"
+
+msgid "IPv4 and IPv6 are using the preferred exit. The fallback will take over when needed."
+msgstr "IPv4 与 IPv6 正在使用首选出口；首选出口不可用时，备用出口会自动接管。"
 
 msgid "Traffic is currently using another default route."
 msgstr "流量当前正在使用其他默认路由。"

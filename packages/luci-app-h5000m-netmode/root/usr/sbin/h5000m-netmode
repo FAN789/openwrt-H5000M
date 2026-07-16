@@ -179,6 +179,7 @@ print_status() {
 	done
 
 	echo "mode=$mode"
+	echo "ipv6_policy=follow_preferred"
 	echo "wan_present=$WAN_PRESENT"
 	echo "wan_up=$WAN_UP"
 	echo "wan6_up=$WAN6_UP"
@@ -201,8 +202,10 @@ print_status() {
 	echo "usbv6_metric=$(uci -q get "network.${MODEM6_PRIMARY}.metric" || true)"
 	echo "wan_defaultroute=$(uci -q get network.wan.defaultroute || echo 1)"
 	echo "wan6_defaultroute=$(uci -q get network.wan6.defaultroute || echo 1)"
+	echo "wan6_auto=$(uci -q get network.wan6.auto || echo 1)"
 	echo "usb_defaultroute=$(uci -q get "network.${MODEM_PRIMARY}.defaultroute" || echo 1)"
 	echo "usbv6_defaultroute=$(uci -q get "network.${MODEM6_PRIMARY}.defaultroute" || echo 1)"
+	echo "usbv6_auto=$(uci -q get "network.${MODEM6_PRIMARY}.auto" || echo 1)"
 	echo "qmodem_metric=$qmodem_metric"
 	echo "default4=$DEFAULT4"
 	echo "default6=$DEFAULT6"
@@ -238,27 +241,35 @@ release_lock() {
 }
 
 apply_policy() {
-	local wan_metric modem_metric wan_defaultroute modem_defaultroute modem section
+	local wan_metric modem_metric wan4_defaultroute wan6_defaultroute modem4_defaultroute modem6_defaultroute wan6_auto modem6_auto modem section device
 
 	discover_modem_interfaces
 
 	case "$mode" in
 		modem_first)
 			wan_metric=50; modem_metric=10
-			wan_defaultroute=1; modem_defaultroute=1
+			wan4_defaultroute=1; wan6_defaultroute=0
+			modem4_defaultroute=1; modem6_defaultroute=1
+			wan6_auto=0; modem6_auto=1
 			;;
 		wan_only)
 			wan_metric=10; modem_metric=50
-			wan_defaultroute=1; modem_defaultroute=0
+			wan4_defaultroute=1; wan6_defaultroute=1
+			modem4_defaultroute=0; modem6_defaultroute=0
+			wan6_auto=1; modem6_auto=0
 			;;
 		modem_only)
 			wan_metric=50; modem_metric=10
-			wan_defaultroute=0; modem_defaultroute=1
+			wan4_defaultroute=0; wan6_defaultroute=0
+			modem4_defaultroute=1; modem6_defaultroute=1
+			wan6_auto=0; modem6_auto=1
 			;;
 		*)
 			mode=wan_first
 			wan_metric=10; modem_metric=50
-			wan_defaultroute=1; modem_defaultroute=1
+			wan4_defaultroute=1; wan6_defaultroute=1
+			modem4_defaultroute=1; modem6_defaultroute=0
+			wan6_auto=1; modem6_auto=0
 			;;
 	esac
 
@@ -269,11 +280,18 @@ apply_policy() {
 	set_network_option wan metric "$wan_metric" || return 1
 	set_network_option wan6 metric "$wan_metric" || return 1
 	set_network_option wan norelease 1 || return 1
-	set_network_option wan defaultroute "$wan_defaultroute" || return 1
-	set_network_option wan6 defaultroute "$wan_defaultroute" || return 1
+	set_network_option wan defaultroute "$wan4_defaultroute" || return 1
+	set_network_option wan6 defaultroute "$wan6_defaultroute" || return 1
+	set_network_option wan6 auto "$wan6_auto" || return 1
 	for section in $MODEM_SECTIONS; do
 		set_network_option "$section" metric "$modem_metric" || return 1
-		set_network_option "$section" defaultroute "$modem_defaultroute" || return 1
+		device="$(uci -q get "network.${section}.device" || uci -q get "network.${section}.ifname" || true)"
+		if [ "$section" = "$MODEM6_PRIMARY" ] || [ "$device" = "@${MODEM_PRIMARY}" ]; then
+			set_network_option "$section" defaultroute "$modem6_defaultroute" || return 1
+			set_network_option "$section" auto "$modem6_auto" || return 1
+		else
+			set_network_option "$section" defaultroute "$modem4_defaultroute" || return 1
+		fi
 	done
 	uci -q commit network || return 1
 
@@ -329,6 +347,19 @@ if [ "$action" = "apply" ] || [ "$action" = "set" ]; then
 		echo "QModem supervisor reload failed" >&2
 		exit 1
 	fi
+	# Stop the unused IPv6 client instead of leaving it route-less. This avoids
+	# DHCPv6 retries and guarantees that both address families cannot silently
+	# split across different uplinks when the preferred network has no IPv6.
+	case "$mode" in
+		wan_first|wan_only)
+			[ -n "$MODEM6_PRIMARY" ] && ifdown "$MODEM6_PRIMARY" >/dev/null 2>&1 || true
+			interface_exists wan6 && ifup wan6 >/dev/null 2>&1 || true
+			;;
+		modem_first|modem_only)
+			interface_exists wan6 && ifdown wan6 >/dev/null 2>&1 || true
+			[ -n "$MODEM6_PRIMARY" ] && ifup "$MODEM6_PRIMARY" >/dev/null 2>&1 || true
+			;;
+	esac
 	logger -t "$TAG" "applied exit policy mode=$mode"
 fi
 

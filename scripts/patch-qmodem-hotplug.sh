@@ -449,6 +449,99 @@ else
   echo "Skipped QModem MT5700M DHCP release guard: file missing or already patched."
 fi
 
+if [ -n "${QMODEM_DIAL}" ] && ! grep -q "H5000M_QMODEM_ALIGNED_DUALSTACK_V3" "${QMODEM_DIAL}"; then
+  python3 - "${QMODEM_DIAL}" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+ipv4_anchor = '''            uci set network.${interface_name}.defaultroute='1'
+            uci set network.${interface_name}.metric="${metric}"
+'''
+ipv4_replacement = '''            # H5000M_QMODEM_ALIGNED_DUALSTACK_V3
+            # A backup line must not attract the other address family while
+            # the preferred exit is healthy. The netmode policy owns routes;
+            # preserve it when QModem recreates an interface after redial.
+            case "$(uci -q get h5000m_netmode.settings.mode || true)" in
+                wan_only)
+                    uci set network.${interface_name}.defaultroute='0'
+                    ;;
+                *)
+                    uci set network.${interface_name}.defaultroute='1'
+                    ;;
+            esac
+            uci set network.${interface_name}.metric="${metric}"
+'''
+ipv6_anchor = '''            uci set network.${interface6_name}.metric="${metric}"
+'''
+ipv6_replacement = '''            uci set network.${interface6_name}.metric="${metric}"
+            case "$(uci -q get h5000m_netmode.settings.mode || true)" in
+                wan_first|wan_only)
+                    uci set network.${interface6_name}.defaultroute='0'
+                    uci set network.${interface6_name}.auto='0'
+                    ;;
+                *)
+                    uci set network.${interface6_name}.defaultroute='1'
+                    uci set network.${interface6_name}.auto='1'
+                    ;;
+            esac
+'''
+ipv6_v1 = '''            uci set network.${interface6_name}.metric="${metric}"
+            case "$(uci -q get h5000m_netmode.settings.mode || true)" in
+                wan_first|wan_only)
+                    uci set network.${interface6_name}.defaultroute='0'
+                    ;;
+                *)
+                    uci set network.${interface6_name}.defaultroute='1'
+                    ;;
+            esac
+'''
+ifup_anchor = '''            ifup ${interface_name}
+            ifup ${interface6_name}
+            m_debug "network reload"
+'''
+ifup_replacement = '''            ifup ${interface_name}
+            # H5000M_QMODEM_ALIGNED_DUALSTACK_V3_IFUP_GUARD
+            # QModem explicitly raises both interfaces after every redial,
+            # bypassing netifd's auto=0 policy. Keep the unused IPv6 client
+            # stopped from the first moment instead of cleaning it up later.
+            case "$(uci -q get network.${interface6_name}.auto || true)" in
+                0)
+                    ifdown ${interface6_name} >/dev/null 2>&1
+                    ;;
+                *)
+                    ifup ${interface6_name}
+                    ;;
+            esac
+            m_debug "network reload"
+'''
+
+if "H5000M_QMODEM_ALIGNED_DUALSTACK_V2" in text:
+    text = text.replace("H5000M_QMODEM_ALIGNED_DUALSTACK_V2", "H5000M_QMODEM_ALIGNED_DUALSTACK_V3", 1)
+elif "# H5000M_QMODEM_ALIGNED_DUALSTACK\n" in text:
+    if ipv6_v1 not in text:
+        raise SystemExit(f"missing QModem V1 IPv6 route-policy block in {path}")
+    text = text.replace("H5000M_QMODEM_ALIGNED_DUALSTACK", "H5000M_QMODEM_ALIGNED_DUALSTACK_V3", 1)
+    text = text.replace(ipv6_v1, ipv6_replacement, 1)
+else:
+    if ipv4_anchor not in text:
+        raise SystemExit(f"missing QModem IPv4 route-policy anchor in {path}")
+    if ipv6_anchor not in text:
+        raise SystemExit(f"missing QModem IPv6 route-policy anchor in {path}")
+    text = text.replace(ipv4_anchor, ipv4_replacement, 1)
+    text = text.replace(ipv6_anchor, ipv6_replacement, 1)
+if "H5000M_QMODEM_ALIGNED_DUALSTACK_V3_IFUP_GUARD" not in text:
+    if ifup_anchor not in text:
+        raise SystemExit(f"missing QModem IPv6 ifup anchor in {path}")
+    text = text.replace(ifup_anchor, ifup_replacement, 1)
+path.write_text(text, encoding="utf-8")
+PY
+  echo "Applied QModem aligned dual-stack route policy: ${QMODEM_DIAL}"
+else
+  echo "Skipped QModem aligned dual-stack route policy: file missing or already patched."
+fi
+
 if [ -n "${QMODEM_DIAL}" ] && ! grep -q "H5000M_QMODEM_KEEP_AUTODIAL" "${QMODEM_DIAL}"; then
   python3 - "${QMODEM_DIAL}" <<'PY'
 from pathlib import Path
@@ -485,7 +578,7 @@ else
   echo "Skipped QModem MT5700M internal auto-dial guard: file missing or already patched."
 fi
 
-if [ -n "${QMODEM_MAKEFILE}" ] && ! grep -q '^PKG_RELEASE:=6$' "${QMODEM_MAKEFILE}"; then
+if [ -n "${QMODEM_MAKEFILE}" ] && ! grep -q '^PKG_RELEASE:=9$' "${QMODEM_MAKEFILE}"; then
   python3 - "${QMODEM_MAKEFILE}" <<'PY'
 from pathlib import Path
 import sys
@@ -501,12 +594,30 @@ v2 = '''# H5000M_QMODEM_PACKAGE_RELEASE
 # Distinguish the device-specific reliability patch from the upstream feed.
 PKG_RELEASE:=5
 '''
-replacement = '''# H5000M_QMODEM_PACKAGE_RELEASE
+current = '''# H5000M_QMODEM_PACKAGE_RELEASE
 # Distinguish the device-specific reliability patch from the upstream feed.
 PKG_RELEASE:=6
 '''
+latest = '''# H5000M_QMODEM_PACKAGE_RELEASE
+# Distinguish the device-specific reliability patch from the upstream feed.
+PKG_RELEASE:=7
+'''
+previous = '''# H5000M_QMODEM_PACKAGE_RELEASE
+# Distinguish the device-specific reliability patch from the upstream feed.
+PKG_RELEASE:=8
+'''
+replacement = '''# H5000M_QMODEM_PACKAGE_RELEASE
+# Distinguish the device-specific reliability patch from the upstream feed.
+PKG_RELEASE:=9
+'''
 
-if v2 in text:
+if previous in text:
+    text = text.replace(previous, replacement, 1)
+elif latest in text:
+    text = text.replace(latest, replacement, 1)
+elif current in text:
+    text = text.replace(current, replacement, 1)
+elif v2 in text:
     text = text.replace(v2, replacement, 1)
 elif v1 in text:
     text = text.replace(v1, replacement, 1)

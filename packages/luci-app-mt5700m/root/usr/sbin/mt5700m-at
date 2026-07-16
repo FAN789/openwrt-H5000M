@@ -618,6 +618,73 @@ print_temperature() {
 	awk -v v="${value}" 'BEGIN { printf "temperature=%.1f\n", v / 10 }'
 }
 
+print_carrier_aggregation() {
+	local raw
+
+	raw="$(at_cmd 'AT^HFREQINFO?' || true)"
+	printf '%s\n' "${raw}" | awk '
+		BEGIN {
+			count = 0
+			nr = 0
+			lte = 0
+			dl_total = 0
+			ul_total = 0
+		}
+		/^\^HFREQINFO:/ {
+			line = $0
+			sub(/^\^HFREQINFO:[[:space:]]*/, "", line)
+			gsub(/[[:space:]\r\"]/, "", line)
+			n = split(line, field, ",")
+			rat = field[2]
+			if (rat == "7") {
+				radio = "NR"
+				frequency_divisor = 1000
+				limit = 3
+				nr = 1
+			} else {
+				radio = "LTE"
+				frequency_divisor = 10
+				limit = 4
+				lte = 1
+			}
+			parsed = 0
+			for (i = 3; i + 6 <= n && parsed < limit; i += 7) {
+				if (field[i] !~ /^[0-9]+$/ || field[i + 1] !~ /^[0-9]+$/ ||
+				    field[i + 2] !~ /^[0-9]+$/ || field[i + 3] !~ /^[0-9]+$/ ||
+				    field[i + 4] !~ /^[0-9]+$/ || field[i + 5] !~ /^[0-9]+$/ ||
+				    field[i + 6] !~ /^[0-9]+$/)
+					continue
+				count++
+				parsed++
+				band = (radio == "NR" ? "n" : "B") field[i]
+				dl_frequency = field[i + 2] / frequency_divisor
+				ul_frequency = field[i + 5] / frequency_divisor
+				dl_bandwidth = field[i + 3] / 1000
+				ul_bandwidth = field[i + 6] / 1000
+				dl_total += dl_bandwidth
+				ul_total += ul_bandwidth
+				printf "carrier_%d=%s|%s|%s|%.2f|%.1f|%s|%.2f|%.1f\n", count,
+					radio, band, field[i + 1], dl_frequency, dl_bandwidth,
+					field[i + 4], ul_frequency, ul_bandwidth
+			}
+		}
+		END {
+			if (count == 0)
+				exit
+			if (nr && lte)
+				mode = "EN-DC"
+			else if (nr)
+				mode = count > 1 ? "NR-CA" : "NR"
+			else
+				mode = count > 1 ? "LTE-CA" : "LTE"
+			printf "carrier_count=%d\n", count
+			printf "ca_active=%d\n", (count > 1 ? 1 : 0)
+			printf "ca_mode=%s\n", mode
+			printf "ca_dl_bandwidth=%.1f\n", dl_total
+			printf "ca_ul_bandwidth=%.1f\n", ul_total
+		}'
+}
+
 print_lock_status() {
 	local raw
 
@@ -760,6 +827,7 @@ case "${1:-status}" in
 		print_identity
 		print_sim_operator
 		print_signal
+		print_carrier_aggregation
 		print_temperature
 		print_lock_status
 		;;
