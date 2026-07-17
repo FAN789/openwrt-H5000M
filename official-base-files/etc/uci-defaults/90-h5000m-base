@@ -14,12 +14,53 @@ if [ -f /etc/config/uhttpd ]; then
 fi
 
 if [ -f /etc/config/dropbear ]; then
-	uci -q set dropbear.@dropbear[0].PasswordAuth='off'
-	uci -q set dropbear.@dropbear[0].RootPasswordAuth='off'
+	uci -q set dropbear.@dropbear[0].enable='1'
+	uci -q set dropbear.@dropbear[0].PasswordAuth='on'
+	uci -q set dropbear.@dropbear[0].RootPasswordAuth='on'
 fi
 
 if [ -x /etc/init.d/ttyd ]; then
 	/etc/init.d/ttyd disable >/dev/null 2>&1 || true
+fi
+
+# Provide the requested first-boot credentials. SSH public-key login remains
+# available in addition to password authentication.
+if command -v chpasswd >/dev/null 2>&1; then
+	echo 'root:root' | chpasswd
+else
+	(printf 'root\nroot\n' | passwd root) >/dev/null 2>&1 || true
+fi
+
+# Bring up both official mac80211 radios with one shared network name. Keeping
+# the same SSID, security mode and key allows clients to choose the better band;
+# 802.11k/v assists capable clients without forcing proprietary band steering.
+if [ -f /etc/config/wireless ]; then
+	for radio in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-device$/\1/p'); do
+		band="$(uci -q get "${radio}.band")"
+		uci -q set "${radio}.country=CN"
+		uci -q set "${radio}.disabled=0"
+		case "${band}" in
+			2g)
+				uci -q set "${radio}.htmode=EHT40"
+				;;
+			5g)
+				uci -q set "${radio}.htmode=EHT160"
+				;;
+		esac
+	done
+
+	for iface in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-iface$/\1/p'); do
+		[ "$(uci -q get "${iface}.mode")" = 'ap' ] || continue
+		uci -q set "${iface}.ssid=H5000M"
+		uci -q set "${iface}.encryption=sae-mixed"
+		uci -q set "${iface}.key=77778888"
+		uci -q set "${iface}.ieee80211w=1"
+		uci -q set "${iface}.ieee80211k=1"
+		uci -q set "${iface}.bss_transition=1"
+		uci -q set "${iface}.rrm_neighbor_report=1"
+		uci -q set "${iface}.rrm_beacon_report=1"
+		uci -q set "${iface}.disabled=0"
+	done
 fi
 
 uci -q commit system
@@ -27,5 +68,6 @@ uci -q commit luci
 uci -q commit network
 uci -q commit uhttpd
 uci -q commit dropbear
+uci -q commit wireless
 
 exit 0
