@@ -53,6 +53,9 @@ if [ -f /etc/config/wireless ]; then
 
 	for iface in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-iface$/\1/p'); do
 		[ "$(uci -q get "${iface}.mode")" = 'ap' ] || continue
+		# Remove the incompatible option from preserved configurations created
+		# by earlier H5000M images before hostapd reads the AP definition.
+		uci -q delete "${iface}.bss_transition"
 		uci -q set "${iface}.ssid=H5000M"
 		uci -q set "${iface}.encryption=sae-mixed"
 		uci -q set "${iface}.key=77778888"

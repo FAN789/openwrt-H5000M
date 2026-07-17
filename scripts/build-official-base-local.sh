@@ -113,7 +113,8 @@ grep -q 'htmode=EHT160' <<<"${base_defaults}"
 grep -q 'encryption=sae-mixed' <<<"${base_defaults}"
 grep -Fq 'uci -q set "${radio}.disabled=0"' <<<"${base_defaults}"
 grep -Fq 'uci -q set "${iface}.disabled=0"' <<<"${base_defaults}"
-if grep -Eq 'uci .*bss_transition' <<<"${base_defaults}"; then
+grep -Fq 'uci -q delete "${iface}.bss_transition"' <<<"${base_defaults}"
+if grep -Eq 'uci .*set .*bss_transition' <<<"${base_defaults}"; then
 	echo "Unsupported bss_transition setting would prevent the default APs from starting." >&2
 	exit 1
 fi
