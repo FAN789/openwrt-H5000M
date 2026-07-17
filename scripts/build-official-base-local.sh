@@ -110,6 +110,10 @@ grep -q '/etc/init.d/ttyd disable' <<<"${base_defaults}"
 required_packages=(
   luci luci-ssl luci-i18n-base-zh-cn luci-app-package-manager
   luci-app-upnp luci-i18n-upnp-zh-cn miniupnpd-nftables
+  dnsmasq-full
+  kmod-nft-socket kmod-nft-tproxy
+  kmod-nf-socket kmod-nf-tproxy kmod-nf-conntrack-netlink
+  libnetfilter-conntrack3 libnfnetlink0 libnettle8 libgmp10
   curl htop
 )
 for package in "${required_packages[@]}"; do
@@ -119,21 +123,39 @@ for package in "${required_packages[@]}"; do
   }
 done
 
-forbidden_packages='h5000m-fancontrol|luci-app-h5000m-fancontrol|luci-app-h5000m-netmode|luci-app-mt5700m|luci-app-mt5700m-traffic|luci-app-passwall|luci-app-passwall2|luci-app-homeproxy|luci-app-mosdns|qmodem|ubus-at-daemon|sms-tool_q|at-webserver'
+forbidden_packages='h5000m-fancontrol|luci-app-h5000m-fancontrol|luci-app-h5000m-netmode|luci-app-mt5700m|luci-app-mt5700m-traffic|luci-app-passwall|luci-app-passwall2|luci-app-homeproxy|luci-app-mosdns|xray-core|xray-plugin|sing-box|hysteria|hysteria2|tuic-client|naiveproxy|qmodem|ubus-at-daemon|sms-tool_q|at-webserver'
 if grep -Eq "^(${forbidden_packages})[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt"; then
   echo "A custom or proxy plugin leaked into the official base firmware." >&2
   grep -E "^(${forbidden_packages})[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt" >&2
   exit 1
 fi
+if grep -Eq "^dnsmasq[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt"; then
+  echo "The compact dnsmasq package must be excluded; use dnsmasq-full." >&2
+  exit 1
+fi
+
+grep -Eq '^-rwxr-xr-x .*squashfs-root/usr/sbin/dnsmasq$' "${root_listing}"
+grep -Eq "squashfs-root/lib/modules/${OPENWRT_KERNEL}/nft_socket\\.ko$" "${root_listing}"
+grep -Eq "squashfs-root/lib/modules/${OPENWRT_KERNEL}/nft_tproxy\\.ko$" "${root_listing}"
+unsquashfs -cat "${root_image}" usr/sbin/dnsmasq | grep -aFq 'nftset'
+
+installed_db="$(unsquashfs -cat "${root_image}" lib/apk/db/installed)"
+grep -q "D:.*kernel=${OPENWRT_KERNEL}~${OPENWRT_KERNEL_ABI}" <<<"${installed_db}"
 
 grep -Fq "\"version_code\":\"${OPENWRT_REVISION}\"" "${TEMP_DIR}/profiles.json"
 {
   echo "openwrt_revision=${OPENWRT_REVISION}"
+  echo "kernel=${OPENWRT_KERNEL}"
+  echo "kernel_abi=${OPENWRT_KERNEL_ABI}"
   echo "imagebuilder_sha256=${IMAGEBUILDER_SHA256}"
   echo "target=${OPENWRT_TARGET}"
   echo "profile=${OPENWRT_PROFILE}"
   echo "architecture=${OPENWRT_ARCH}"
   echo "custom_plugins_included=false"
+  echo "passwall2_included=false"
+  echo "passwall2_runtime_prerequisites_included=true"
+  echo "dnsmasq_full_with_nftset=true"
+  echo "nft_socket_tproxy_modules_included=true"
   echo "upnp_included=true"
 } > "${TEMP_DIR}/BUILD-INFO.txt"
 (cd "${TEMP_DIR}" && sha256sum "$(basename "${sysupgrade}")" > SHA256SUMS)

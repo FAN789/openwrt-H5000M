@@ -35,6 +35,8 @@ source "${BASE_ENV}"
 [ "${OPENWRT_PROFILE}" = "hiveton_h5000m" ]
 [ "${OPENWRT_TARGET}" = "mediatek/filogic" ]
 [ "${OPENWRT_ARCH}" = "aarch64_cortex-a53" ]
+[ "${OPENWRT_KERNEL}" = "6.18.38" ]
+[ "${OPENWRT_KERNEL_ABI}" = "93edd57b5daa2a685ba2b251f368f171" ]
 
 package_lines() {
   sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "${PACKAGE_FILE}"
@@ -56,6 +58,10 @@ required_packages=(
   luci luci-ssl luci-i18n-base-zh-cn
   luci-app-package-manager luci-app-upnp luci-i18n-upnp-zh-cn
   miniupnpd-nftables
+  -dnsmasq dnsmasq-full
+  kmod-nft-socket kmod-nft-tproxy
+  kmod-nf-socket kmod-nf-tproxy kmod-nf-conntrack-netlink
+  libnetfilter-conntrack3 libnfnetlink0 libnettle8 libgmp10
 )
 for package in "${required_packages[@]}"; do
   has_package "${package}" || {
@@ -67,7 +73,9 @@ done
 forbidden_packages=(
   h5000m-fancontrol luci-app-h5000m-fancontrol luci-app-h5000m-netmode
   luci-app-mt5700m luci-app-mt5700m-traffic
+  dnsmasq
   luci-app-passwall luci-app-passwall2 luci-app-homeproxy luci-app-mosdns
+  xray-core xray-plugin sing-box hysteria hysteria2 tuic-client naiveproxy
   qmodem ubus-at-daemon sms-tool_q at-webserver
 )
 for package in "${forbidden_packages[@]}"; do
