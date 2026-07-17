@@ -8,6 +8,11 @@ luci-i18n-firewall-zh-cn
 luci-i18n-package-manager-zh-cn
 luci-i18n-ttyd-zh-cn
 
+# Official UPnP stack (installed, configuration remains upstream-controlled)
+luci-app-upnp
+luci-i18n-upnp-zh-cn
+miniupnpd-nftables
+
 # Common administration and diagnostics
 ca-bundle
 curl

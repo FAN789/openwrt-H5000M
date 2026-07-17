@@ -1,365 +1,44 @@
-name: 构建 openwrt-H5000M 固件
+name: 构建 H5000M 官方基础固件
 
 on:
   workflow_dispatch:
-    inputs:
-      runner_type:
-        description: 编译机器
-        required: true
-        type: choice
-        default: github-hosted
-        options:
-          - github-hosted
-          - self-hosted
-      openwrt_ref:
-        description: OpenWrt 版本
-        required: true
-        default: 4fa33a07247e519b258d45bae80e5d05f7999f3b
-      make_jobs:
-        description: 编译线程，留空使用全部核心
-        required: false
-        default: ""
-      clean_build:
-        description: 清理本地增量编译目录后全量重编
-        required: true
-        type: boolean
-        default: true
-      upnp:
-        description: "1. UPnP：端口自动映射"
-        required: true
-        type: boolean
-        default: true
-      passwall2:
-        description: "2. PassWall2：代理与分流"
-        required: true
-        type: boolean
-        default: true
-      homeproxy:
-        description: "3. HomeProxy：代理插件"
-        required: true
-        type: boolean
-        default: false
-      mosdns:
-        description: "4. MosDNS：DNS 分流插件"
-        required: true
-        type: boolean
-        default: false
-      vnstat:
-        description: "5. vnStat2：累计流量统计"
-        required: true
-        type: boolean
-        default: true
-      mt5700m:
-        description: "6. MT5700M：一体化专用管理器"
-        required: true
-        type: boolean
-        default: true
-      eeprom_autoflash:
-        description: "7. EEPROM：首次启动自动写入 WiFi 校准数据"
-        required: true
-        type: boolean
-        default: false
-      create_release:
-        description: 发布 Releases
-        required: true
-        type: boolean
-        default: false
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build:
-    name: ${{ inputs.runner_type == 'self-hosted' && 'LXC 本地 runner 编译' || 'GitHub 托管机器编译' }}
-    runs-on: ${{ fromJSON(inputs.runner_type == 'self-hosted' && '["self-hosted","Linux","X64","homelab","lxc","openwrt-h5000m"]' || '"ubuntu-24.04"') }}
-    env:
-      BUILD_DL_DIR: ${{ inputs.runner_type == 'self-hosted' && '/home/builder/openwrt-h5000m-cache/dl' || '' }}
-      OPENWRT_SRC_DIR: ${{ inputs.runner_type == 'self-hosted' && '/home/builder/openwrt-h5000m-build/openwrt' || '' }}
-
+  check:
+    name: 主包边界检查
+    runs-on: ubuntu-24.04
     steps:
       - name: 检出项目
+        uses: actions/checkout@v4
+
+      - name: 检查仓库结构与配置
+        run: ./scripts/check-main-package.sh
+
+  build:
+    name: 官方 ImageBuilder
+    needs: check
+    runs-on: [self-hosted, Linux, X64, homelab, lxc, openwrt-h5000m]
+    timeout-minutes: 60
+    steps:
+      - name: 检出项目
+        uses: actions/checkout@v4
+
+      - name: 构建并验证基础固件
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          git config --global --unset-all http.proxy || true
-          git config --global --unset-all https.proxy || true
-          git config --global http.version HTTP/1.1
-          git config --global protocol.version 1
-          git config --global http.lowSpeedLimit 0
-          git config --global http.postBuffer 524288000
+          OPENWRT_LOCAL_CACHE: /home/builder/openwrt-official-cache
+          OPENWRT_LOCAL_ARTIFACTS: ${{ github.workspace }}/artifacts
+        run: ./scripts/build-official-base-local.sh
 
-          repo_url="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          rm -rf .git
-          git init
-          git remote add origin "${repo_url}"
-          checkout_ok=0
-          for attempt in 1 2 3; do
-            if git fetch --depth=1 origin "${GITHUB_SHA}"; then
-              git checkout --force FETCH_HEAD
-              checkout_ok=1
-              break
-            fi
-            if [ "${attempt}" = "3" ]; then
-              echo "项目 Git 检出失败，改用 GitHub tarball 兜底。"
-              break
-            fi
-            echo "项目检出失败，等待后重试：${attempt}/3"
-            sleep $((attempt * 10))
-          done
-
-          if [ "${checkout_ok}" != "1" ]; then
-            tmp_archive="$(mktemp -d)"
-            curl --http1.1 --fail --location --retry 5 --retry-delay 5 --retry-all-errors \
-              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${GITHUB_SHA}" \
-              -o "${tmp_archive}/repo.tar.gz"
-            find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-            tar -xzf "${tmp_archive}/repo.tar.gz" -C "${tmp_archive}"
-            extracted_dir="$(find "${tmp_archive}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-            cp -a "${extracted_dir}/." .
-            rm -rf "${tmp_archive}"
-          fi
-
-      - name: 准备本地增量编译目录
-        if: ${{ inputs.runner_type == 'self-hosted' }}
-        run: |
-          if [ "${{ inputs.clean_build }}" = "true" ]; then
-            echo "清理本地增量编译目录：${OPENWRT_SRC_DIR}"
-            rm -rf "${OPENWRT_SRC_DIR}"
-          fi
-          mkdir -p "$(dirname "${OPENWRT_SRC_DIR}")"
-          rm -rf openwrt
-
-      - name: 准备 WiFi EEPROM 自动刷写文件
-        if: ${{ inputs.eeprom_autoflash }}
-        run: bash ./scripts/prepare-eeprom-autoflash.sh
-
-      - name: 安装依赖
-        if: ${{ inputs.runner_type == 'github-hosted' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            ack antlr3 asciidoc autoconf automake autopoint binutils bison \
-            build-essential bzip2 ccache clang cmake cpio curl device-tree-compiler \
-            ecj fastjar flex gawk gettext gcc-multilib g++-multilib git gnutls-dev \
-            gperf haveged help2man intltool lib32gcc-s1 libc6-dev-i386 libelf-dev \
-            libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev \
-            libncurses-dev libpython3-dev libreadline-dev libssl-dev libtool \
-            libyaml-dev libz-dev lld llvm lrzsz mkisofs msmtp nano ninja-build \
-            p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply \
-            python3-docutils python3-pyelftools qemu-utils re2c rsync scons \
-            squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim \
-            wget xmlto xxd zlib1g-dev zstd
-
-      - name: 准备 OpenWrt 源码
-        env:
-          INCLUDE_PASSWALL2: ${{ inputs.passwall2 && 'true' || 'false' }}
-          INCLUDE_MOSDNS: ${{ inputs.mosdns && 'true' || 'false' }}
-          INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
-          INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
-          INCLUDE_VNSTAT: ${{ inputs.vnstat && 'true' || 'false' }}
-          INCLUDE_MT5700M: ${{ inputs.mt5700m && 'true' || 'false' }}
-        run: |
-          bash ./scripts/prepare-source.sh "${{ inputs.openwrt_ref }}"
-          if [ -n "${OPENWRT_SRC_DIR}" ]; then
-            rm -rf openwrt
-            ln -s "${OPENWRT_SRC_DIR}" openwrt
-          fi
-
-      - name: 更新软件源
-        working-directory: openwrt
-        env:
-          INCLUDE_PASSWALL2: ${{ inputs.passwall2 && 'true' || 'false' }}
-          INCLUDE_MOSDNS: ${{ inputs.mosdns && 'true' || 'false' }}
-          INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
-          INCLUDE_VNSTAT: ${{ inputs.vnstat && 'true' || 'false' }}
-          INCLUDE_MT5700M: ${{ inputs.mt5700m && 'true' || 'false' }}
-        run: |
-          git config --global --unset-all http.proxy || true
-          git config --global --unset-all https.proxy || true
-          git config --global http.version HTTP/1.1
-          git config --global http.lowSpeedLimit 0
-          git config --global http.postBuffer 524288000
-
-          reset_feed_repo() {
-            local feed="$1"
-            if [ -d "feeds/${feed}/.git" ]; then
-              echo "清理 feed 工作区：${feed}"
-              git -C "feeds/${feed}" reset --hard HEAD
-              git -C "feeds/${feed}" clean -fd
-            fi
-          }
-
-          reset_feed_repo qmodem
-          reset_feed_repo small_package
-
-          for attempt in 1 2 3; do
-            if ./scripts/feeds update -a; then
-              break
-            fi
-
-            echo "软件源更新失败，清理 small_package 中未使用且可能损坏的 webd 包后重试：${attempt}/3"
-            reset_feed_repo qmodem
-            reset_feed_repo small_package
-            rm -rf feeds/small_package/webd
-            if [ "${attempt}" = "3" ]; then
-              echo "软件源更新重试失败。"
-              exit 1
-            fi
-            sleep 5
-          done
-          bash "${GITHUB_WORKSPACE}/scripts/install-feeds.sh"
-
-      - name: 修复第三方 feed
-        run: bash ./scripts/patch-feeds.sh
-
-      - name: 写入插件选择
-        env:
-          INCLUDE_PASSWALL2: ${{ inputs.passwall2 && 'true' || 'false' }}
-          INCLUDE_MOSDNS: ${{ inputs.mosdns && 'true' || 'false' }}
-          INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
-          INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
-          INCLUDE_VNSTAT: ${{ inputs.vnstat && 'true' || 'false' }}
-          INCLUDE_MT5700M: ${{ inputs.mt5700m && 'true' || 'false' }}
-        run: bash ./scripts/apply-package-options.sh
-
-      - name: 配置本地下载缓存
-        if: ${{ inputs.runner_type == 'self-hosted' }}
-        run: |
-          mkdir -p "${BUILD_DL_DIR}"
-          {
-            echo "# CONFIG_DEVEL is not set"
-            echo "# CONFIG_TOOLCHAINOPTS is not set"
-            echo "# CONFIG_CCACHE is not set"
-            echo "# CONFIG_GDB is not set"
-            echo "# CONFIG_GDB_PYTHON is not set"
-          } >> openwrt/.config
-
-      - name: 生成配置
-        working-directory: openwrt
-        run: make defconfig
-
-      - name: 关闭调试工具链
-        working-directory: openwrt
-        run: |
-          sed -i \
-            -e '/^CONFIG_DEVEL=/d' \
-            -e '/^# CONFIG_DEVEL is not set/d' \
-            -e '/^CONFIG_TOOLCHAINOPTS=/d' \
-            -e '/^# CONFIG_TOOLCHAINOPTS is not set/d' \
-            -e '/^CONFIG_CCACHE=/d' \
-            -e '/^# CONFIG_CCACHE is not set/d' \
-            -e '/^CONFIG_CCACHE_DIR=/d' \
-            -e '/^CONFIG_GDB=/d' \
-            -e '/^# CONFIG_GDB is not set/d' \
-            -e '/^CONFIG_GDB_PYTHON=/d' \
-            -e '/^# CONFIG_GDB_PYTHON is not set/d' \
-            .config
-          {
-            echo "# CONFIG_DEVEL is not set"
-            echo "# CONFIG_TOOLCHAINOPTS is not set"
-            echo "# CONFIG_CCACHE is not set"
-            echo "# CONFIG_GDB is not set"
-            echo "# CONFIG_GDB_PYTHON is not set"
-          } >> .config
-          grep -E '^(CONFIG_DEVEL|CONFIG_TOOLCHAINOPTS|CONFIG_CCACHE|CONFIG_GDB|CONFIG_GDB_PYTHON)=|^# CONFIG_(DEVEL|TOOLCHAINOPTS|CCACHE|GDB)' .config || true
-
-      - name: 检查插件
-        env:
-          INCLUDE_PASSWALL2: ${{ inputs.passwall2 && 'true' || 'false' }}
-          INCLUDE_MOSDNS: ${{ inputs.mosdns && 'true' || 'false' }}
-          INCLUDE_UPNP: ${{ inputs.upnp && 'true' || 'false' }}
-          INCLUDE_HOMEPROXY: ${{ inputs.homeproxy && 'true' || 'false' }}
-          INCLUDE_VNSTAT: ${{ inputs.vnstat && 'true' || 'false' }}
-          INCLUDE_MT5700M: ${{ inputs.mt5700m && 'true' || 'false' }}
-        run: bash ./scripts/verify-package-options.sh
-
-      - name: 下载源码包
-        working-directory: openwrt
-        run: |
-          if [ -n "${BUILD_DL_DIR}" ]; then
-            make DL_DIR="${BUILD_DL_DIR}" download -j"$(nproc)"
-          else
-            make download -j"$(nproc)"
-          fi
-
-      - name: Prebuild host ninja
-        working-directory: openwrt
-        run: make tools/ninja/compile -j1
-
-      - name: 编译固件
-        id: compile
-        working-directory: openwrt
-        run: |
-          make_args=()
-          if [ -n "${BUILD_DL_DIR}" ]; then
-            make_args+=(DL_DIR="${BUILD_DL_DIR}")
-          fi
-          if [ -n "${{ inputs.make_jobs }}" ]; then
-            make "${make_args[@]}" -j"${{ inputs.make_jobs }}"
-          else
-            make "${make_args[@]}" -j"$(nproc)"
-          fi
-
-      - name: 输出失败详情
-        if: ${{ failure() && steps.compile.outcome == 'failure' }}
-        working-directory: openwrt
-        run: |
-          echo "编译失败，输出 OpenWrt 构建日志摘要。"
-          if [ -d logs ]; then
-            find logs -type f | sort
-            find logs -type f | sort | while read -r log; do
-              echo "::group::${log}"
-              tail -n 240 "${log}" || true
-              echo "::endgroup::"
-            done
-          fi
-          echo "执行单线程 package/install 以输出 rootfs 安装失败点。"
-          timeout 15m make package/install V=s || true
-          echo "执行单线程详细编译以输出真实失败点。"
-          timeout 45m make -j1 V=s || true
-
-      - name: 上传失败日志
-        if: ${{ failure() && steps.compile.outcome == 'failure' }}
+      - name: 上传基础固件
         uses: actions/upload-artifact@v4
         with:
-          name: openwrt-H5000M-build-logs-${{ github.run_number }}
-          path: openwrt/logs/**
-          if-no-files-found: ignore
-
-      - name: 清理无关启动文件
-        working-directory: openwrt
-        run: |
-          find bin/targets/mediatek/filogic -maxdepth 1 -type f -name 'mt798*-ram-*-bl2.bin' -delete
-          find bin/targets/mediatek/filogic -maxdepth 1 -type f -name 'mt798*-ram-*-bl2.bin' -print
-          cd bin/targets/mediatek/filogic
-          find . -maxdepth 1 -type f ! -name sha256sums -print0 | sort -z | xargs -0 sha256sum > sha256sums
-
-      - name: 上传固件
-        uses: actions/upload-artifact@v4
-        with:
-          name: openwrt-H5000M-${{ inputs.openwrt_ref }}
-          path: |
-            openwrt/bin/targets/mediatek/filogic/*
-
-      - name: 准备发布
-        if: ${{ inputs.create_release }}
-        run: |
-          safe_ref="$(printf '%s' '${{ inputs.openwrt_ref }}' | tr '/:@ ' '----')"
-          echo "RELEASE_TAG=openwrt-H5000M-${safe_ref}-${{ github.run_number }}" >> "$GITHUB_ENV"
-          echo "RELEASE_NAME=openwrt-H5000M ${{ inputs.openwrt_ref }} 第 ${{ github.run_number }} 次构建" >> "$GITHUB_ENV"
-
-      - name: 发布 Releases
-        if: ${{ inputs.create_release }}
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          name: ${{ env.RELEASE_NAME }}
-          body: openwrt-H5000M ${{ inputs.openwrt_ref }} build ${{ github.run_number }}
-          target_commitish: ${{ github.sha }}
-          make_latest: false
-          files: openwrt/bin/targets/mediatek/filogic/*
+          name: H5000M-official-base
+          path: artifacts/H5000M-official-base-*/
+          if-no-files-found: error
+          retention-days: 14

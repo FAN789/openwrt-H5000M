@@ -2,20 +2,27 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../configs/official-base.env
+source "${ROOT_DIR}/configs/official-base.env"
+
 CACHE_ROOT="${OPENWRT_LOCAL_CACHE:-${HOME}/cache}"
 ARTIFACT_ROOT="${OPENWRT_LOCAL_ARTIFACTS:-${HOME}/artifacts}"
-
-OPENWRT_REVISION="r35346-e9aa5bea9f"
-BASE_URL="https://downloads.openwrt.org/snapshots/targets/mediatek/filogic"
-IMAGEBUILDER_FILE="openwrt-imagebuilder-mediatek-filogic.Linux-x86_64.tar.zst"
-IMAGEBUILDER_SHA256="29fa3b8bfd15eb08c27e5f8153e1a8077e2f19906738289e27497004c40c270a"
-
 DOWNLOAD_DIR="${CACHE_ROOT}/downloads"
 IMAGEBUILDER_DIR="${CACHE_ROOT}/imagebuilder/${IMAGEBUILDER_SHA256}"
 ARCHIVE="${DOWNLOAD_DIR}/${IMAGEBUILDER_FILE}"
 FINAL_DIR="${ARTIFACT_ROOT}/H5000M-official-base-${OPENWRT_REVISION}"
 TEMP_DIR="${ARTIFACT_ROOT}/.H5000M-official-base-${OPENWRT_REVISION}.tmp"
 LOCK_FILE="${CACHE_ROOT}/.official-base.lock"
+TARGET_DIR="${IMAGEBUILDER_DIR}/bin/targets/${OPENWRT_TARGET}"
+
+for command in curl flock make sha256sum tar unsquashfs; do
+  command -v "${command}" >/dev/null 2>&1 || {
+    echo "Missing required command: ${command}" >&2
+    exit 1
+  }
+done
+
+"${ROOT_DIR}/scripts/check-main-package.sh"
 
 mkdir -p "${DOWNLOAD_DIR}" "$(dirname "${IMAGEBUILDER_DIR}")" "${ARTIFACT_ROOT}"
 exec 9>"${LOCK_FILE}"
@@ -32,7 +39,7 @@ verify_archive() {
 if ! verify_archive; then
   rm -f "${ARCHIVE}.part"
   curl --fail --location --retry 5 --retry-delay 5 --retry-all-errors \
-    "${BASE_URL}/${IMAGEBUILDER_FILE}" \
+    "${OPENWRT_BASE_URL}/${IMAGEBUILDER_FILE}" \
     -o "${ARCHIVE}.part"
   mv "${ARCHIVE}.part" "${ARCHIVE}"
   verify_archive
@@ -47,30 +54,36 @@ if [ ! -f "${IMAGEBUILDER_DIR}/.h5000m-ready" ]; then
   mv "${extract_dir}" "${IMAGEBUILDER_DIR}"
 fi
 
+actual_revision="$(sed -n 's/^REVISION:=//p' "${IMAGEBUILDER_DIR}/include/version.mk" | head -1)"
+[ "${actual_revision}" = "${OPENWRT_REVISION}" ] || {
+  echo "ImageBuilder revision ${actual_revision:-unknown} does not match ${OPENWRT_REVISION}." >&2
+  exit 1
+}
+
 packages="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' \
   "${ROOT_DIR}/configs/official-base.packages" | tr '\n' ' ')"
 
 rm -rf \
   "${IMAGEBUILDER_DIR}/tmp" \
-  "${IMAGEBUILDER_DIR}/build_dir/target-aarch64_cortex-a53_musl/root-mediatek" \
-  "${IMAGEBUILDER_DIR}/bin/targets/mediatek/filogic"
+  "${IMAGEBUILDER_DIR}/build_dir/target-${OPENWRT_ARCH}_musl/root-mediatek" \
+  "${TARGET_DIR}"
 make -C "${IMAGEBUILDER_DIR}" image \
-  PROFILE=hiveton_h5000m \
+  PROFILE="${OPENWRT_PROFILE}" \
   PACKAGES="${packages}" \
   FILES="${ROOT_DIR}/official-base-files"
 
 rm -rf "${TEMP_DIR}"
 mkdir -p "${TEMP_DIR}"
 
-target_dir="${IMAGEBUILDER_DIR}/bin/targets/mediatek/filogic"
-sysupgrade="${target_dir}/openwrt-mediatek-filogic-hiveton_h5000m-squashfs-sysupgrade.bin"
+sysupgrade="${TARGET_DIR}/openwrt-mediatek-filogic-hiveton_h5000m-squashfs-sysupgrade.bin"
 test -s "${sysupgrade}"
 
 cp "${sysupgrade}" "${TEMP_DIR}/"
-cp "${target_dir}/profiles.json" "${TEMP_DIR}/"
+cp "${TARGET_DIR}/profiles.json" "${TEMP_DIR}/"
+cp "${ROOT_DIR}/configs/official-base.env" "${TEMP_DIR}/"
 cp "${ROOT_DIR}/configs/official-base.packages" "${TEMP_DIR}/"
 make -C "${IMAGEBUILDER_DIR}" manifest \
-  PROFILE=hiveton_h5000m \
+  PROFILE="${OPENWRT_PROFILE}" \
   PACKAGES="${packages}" \
   > "${TEMP_DIR}/installed-package-manifest.txt"
 
@@ -84,7 +97,9 @@ unsquashfs -ll "${root_image}" > "${root_listing}"
 grep -Eq '^-rwxr-xr-x .*squashfs-root/etc/uci-defaults/90-h5000m-base$' "${root_listing}"
 grep -Eq '^-rw-r--r-- .*squashfs-root/etc/apk/keys/h5000m-plugins.pem$' "${root_listing}"
 grep -Eq '^-rwxr-xr-x .*squashfs-root/etc/init.d/uhttpd$' "${root_listing}"
+grep -Eq '^-rwxr-xr-x .*squashfs-root/etc/init.d/miniupnpd$' "${root_listing}"
 grep -Eq '^-rw-r--r-- .*squashfs-root/www/index.html$' "${root_listing}"
+
 base_defaults="$(unsquashfs -cat "${root_image}" etc/uci-defaults/90-h5000m-base)"
 grep -q "192.168.10.1" <<<"${base_defaults}"
 grep -q "redirect_https='1'" <<<"${base_defaults}"
@@ -92,18 +107,36 @@ grep -q "PasswordAuth='off'" <<<"${base_defaults}"
 grep -q "RootPasswordAuth='off'" <<<"${base_defaults}"
 grep -q '/etc/init.d/ttyd disable' <<<"${base_defaults}"
 
-for package in luci luci-ssl luci-i18n-base-zh-cn luci-app-package-manager curl htop; do
-  grep -Eq "^${package}[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt"
+required_packages=(
+  luci luci-ssl luci-i18n-base-zh-cn luci-app-package-manager
+  luci-app-upnp luci-i18n-upnp-zh-cn miniupnpd-nftables
+  curl htop
+)
+for package in "${required_packages[@]}"; do
+  grep -Eq "^${package}[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt" || {
+    echo "Required base package is missing: ${package}" >&2
+    exit 1
+  }
 done
 
-if grep -Eq '^(h5000m-fancontrol|luci-app-h5000m-fancontrol|luci-app-h5000m-netmode|luci-app-mt5700m|qmodem)[[:space:]]' \
-  "${TEMP_DIR}/installed-package-manifest.txt"; then
-  echo "Custom plugin leaked into the official base firmware." >&2
+forbidden_packages='h5000m-fancontrol|luci-app-h5000m-fancontrol|luci-app-h5000m-netmode|luci-app-mt5700m|luci-app-mt5700m-traffic|luci-app-passwall|luci-app-passwall2|luci-app-homeproxy|luci-app-mosdns|qmodem|ubus-at-daemon|sms-tool_q|at-webserver'
+if grep -Eq "^(${forbidden_packages})[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt"; then
+  echo "A custom or proxy plugin leaked into the official base firmware." >&2
+  grep -E "^(${forbidden_packages})[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt" >&2
   exit 1
 fi
 
-grep -q '"version_code":"r35346-e9aa5bea9f"' "${TEMP_DIR}/profiles.json"
-(cd "${TEMP_DIR}" && sha256sum openwrt-* > SHA256SUMS)
+grep -Fq "\"version_code\":\"${OPENWRT_REVISION}\"" "${TEMP_DIR}/profiles.json"
+{
+  echo "openwrt_revision=${OPENWRT_REVISION}"
+  echo "imagebuilder_sha256=${IMAGEBUILDER_SHA256}"
+  echo "target=${OPENWRT_TARGET}"
+  echo "profile=${OPENWRT_PROFILE}"
+  echo "architecture=${OPENWRT_ARCH}"
+  echo "custom_plugins_included=false"
+  echo "upnp_included=true"
+} > "${TEMP_DIR}/BUILD-INFO.txt"
+(cd "${TEMP_DIR}" && sha256sum "$(basename "${sysupgrade}")" > SHA256SUMS)
 
 rm -rf "${FINAL_DIR}"
 mv "${TEMP_DIR}" "${FINAL_DIR}"

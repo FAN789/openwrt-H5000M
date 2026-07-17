@@ -1,5 +1,0 @@
-#!/bin/sh
-
-/usr/sbin/h5000m-netmode >/dev/null 2>&1 || true
-
-exit 0

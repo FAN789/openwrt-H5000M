@@ -6,8 +6,8 @@ uci -q set system.@system[0].hostname='H5000M'
 uci -q set system.@system[0].zonename='Asia/Shanghai'
 uci -q set system.@system[0].timezone='CST-8'
 uci -q set luci.main.lang='zh_cn'
-uci -q set network.lan.ipaddr='192.168.10.1/24'
-uci -q set network.wan.norelease='1'
+uci -q set network.lan.ipaddr='192.168.10.1'
+uci -q set network.lan.netmask='255.255.255.0'
 
 if [ -f /etc/config/uhttpd ]; then
 	uci -q set uhttpd.main.redirect_https='1'
