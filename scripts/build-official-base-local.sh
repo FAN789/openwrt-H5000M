@@ -111,6 +111,12 @@ grep -q 'key=77778888' <<<"${base_defaults}"
 grep -q 'htmode=EHT40' <<<"${base_defaults}"
 grep -q 'htmode=EHT160' <<<"${base_defaults}"
 grep -q 'encryption=sae-mixed' <<<"${base_defaults}"
+grep -Fq 'uci -q set "${radio}.disabled=0"' <<<"${base_defaults}"
+grep -Fq 'uci -q set "${iface}.disabled=0"' <<<"${base_defaults}"
+if grep -Eq 'uci .*bss_transition' <<<"${base_defaults}"; then
+	echo "Unsupported bss_transition setting would prevent the default APs from starting." >&2
+	exit 1
+fi
 grep -q '/etc/init.d/ttyd disable' <<<"${base_defaults}"
 
 required_packages=(
@@ -162,6 +168,7 @@ grep -Fq "\"version_code\":\"${OPENWRT_REVISION}\"" "${TEMP_DIR}/profiles.json"
   echo "default_hostname=H5000M"
   echo "default_wifi_ssid=H5000M"
   echo "default_wifi_widths=EHT40,EHT160"
+  echo "default_wifi_enabled=true"
   echo "ssh_password_authentication=true"
 } > "${TEMP_DIR}/BUILD-INFO.txt"
 (cd "${TEMP_DIR}" && sha256sum "$(basename "${sysupgrade}")" > SHA256SUMS)
