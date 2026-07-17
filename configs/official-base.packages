@@ -13,20 +13,6 @@ luci-app-upnp
 luci-i18n-upnp-zh-cn
 miniupnpd-nftables
 
-# PassWall2 runtime prerequisites only. Do not include PassWall2 itself,
-# proxy cores, nodes, rules, UUIDs, servers, SNI, or credentials here.
--dnsmasq
-dnsmasq-full
-kmod-nft-socket
-kmod-nft-tproxy
-kmod-nf-socket
-kmod-nf-tproxy
-kmod-nf-conntrack-netlink
-libnetfilter-conntrack3
-libnfnetlink0
-libnettle8
-libgmp10
-
 # Common administration and diagnostics
 ca-bundle
 curl

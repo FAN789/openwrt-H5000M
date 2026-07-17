@@ -15,7 +15,7 @@ TEMP_DIR="${ARTIFACT_ROOT}/.H5000M-official-base-${OPENWRT_REVISION}.tmp"
 LOCK_FILE="${CACHE_ROOT}/.official-base.lock"
 TARGET_DIR="${IMAGEBUILDER_DIR}/bin/targets/${OPENWRT_TARGET}"
 
-for command in curl flock make sha256sum tar unsquashfs; do
+for command in curl flock make sha256sum strings tar unsquashfs; do
   command -v "${command}" >/dev/null 2>&1 || {
     echo "Missing required command: ${command}" >&2
     exit 1
@@ -116,11 +116,7 @@ grep -q '/etc/init.d/ttyd disable' <<<"${base_defaults}"
 required_packages=(
   luci luci-ssl luci-i18n-base-zh-cn luci-app-package-manager
   luci-app-upnp luci-i18n-upnp-zh-cn miniupnpd-nftables
-  dnsmasq-full
-  kmod-nft-socket kmod-nft-tproxy
-  kmod-nf-socket kmod-nf-tproxy kmod-nf-conntrack-netlink
-  libnetfilter-conntrack3 libnfnetlink0 libnettle8 libgmp10
-  curl htop
+  dnsmasq curl htop
 )
 for package in "${required_packages[@]}"; do
   grep -Eq "^${package}[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt" || {
@@ -129,21 +125,21 @@ for package in "${required_packages[@]}"; do
   }
 done
 
-forbidden_packages='h5000m-fancontrol|luci-app-h5000m-fancontrol|luci-app-h5000m-netmode|luci-app-mt5700m|luci-app-mt5700m-traffic|luci-app-passwall|luci-app-passwall2|luci-app-homeproxy|luci-app-mosdns|xray-core|xray-plugin|sing-box|hysteria|hysteria2|tuic-client|naiveproxy|qmodem|ubus-at-daemon|sms-tool_q|at-webserver'
+forbidden_packages='h5000m-fancontrol|luci-app-h5000m-fancontrol|luci-app-h5000m-netmode|luci-app-mt5700m|luci-app-mt5700m-traffic|dnsmasq-full|kmod-nft-socket|kmod-nft-tproxy|luci-app-passwall|luci-app-passwall2|luci-app-homeproxy|luci-app-mosdns|xray-core|xray-plugin|sing-box|hysteria|hysteria2|tuic-client|naiveproxy|qmodem|ubus-at-daemon|sms-tool_q|at-webserver'
 if grep -Eq "^(${forbidden_packages})[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt"; then
   echo "A custom or proxy plugin leaked into the official base firmware." >&2
   grep -E "^(${forbidden_packages})[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt" >&2
   exit 1
 fi
-if grep -Eq "^dnsmasq[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt"; then
-  echo "The compact dnsmasq package must be excluded; use dnsmasq-full." >&2
+grep -Eq '^-rwxr-xr-x .*squashfs-root/usr/sbin/dnsmasq$' "${root_listing}"
+if grep -Eq "squashfs-root/lib/modules/${OPENWRT_KERNEL}/nft_(socket|tproxy)\\.ko$" "${root_listing}"; then
+  echo "PassWall2 nft socket/tproxy modules leaked into the base firmware." >&2
   exit 1
 fi
-
-grep -Eq '^-rwxr-xr-x .*squashfs-root/usr/sbin/dnsmasq$' "${root_listing}"
-grep -Eq "squashfs-root/lib/modules/${OPENWRT_KERNEL}/nft_socket\\.ko$" "${root_listing}"
-grep -Eq "squashfs-root/lib/modules/${OPENWRT_KERNEL}/nft_tproxy\\.ko$" "${root_listing}"
-unsquashfs -cat "${root_image}" usr/sbin/dnsmasq | grep -aFq 'nftset'
+if ! unsquashfs -cat "${root_image}" usr/sbin/dnsmasq | strings | awk 'index($0, " no-nftset ") { found=1 } END { exit !found }'; then
+	echo "The base firmware dnsmasq does not advertise the expected no-nftset compact build." >&2
+	exit 1
+fi
 
 installed_db="$(unsquashfs -cat "${root_image}" lib/apk/db/installed)"
 grep -q "D:.*kernel=${OPENWRT_KERNEL}~${OPENWRT_KERNEL_ABI}" <<<"${installed_db}"
@@ -159,9 +155,9 @@ grep -Fq "\"version_code\":\"${OPENWRT_REVISION}\"" "${TEMP_DIR}/profiles.json"
   echo "architecture=${OPENWRT_ARCH}"
   echo "custom_plugins_included=false"
   echo "passwall2_included=false"
-  echo "passwall2_runtime_prerequisites_included=true"
-  echo "dnsmasq_full_with_nftset=true"
-  echo "nft_socket_tproxy_modules_included=true"
+  echo "passwall2_runtime_prerequisites_included=false"
+  echo "dnsmasq_variant=compact"
+  echo "nft_socket_tproxy_modules_included=false"
   echo "upnp_included=true"
   echo "default_hostname=H5000M"
   echo "default_wifi_ssid=H5000M"

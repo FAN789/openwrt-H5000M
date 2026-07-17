@@ -58,10 +58,6 @@ required_packages=(
   luci luci-ssl luci-i18n-base-zh-cn
   luci-app-package-manager luci-app-upnp luci-i18n-upnp-zh-cn
   miniupnpd-nftables
-  -dnsmasq dnsmasq-full
-  kmod-nft-socket kmod-nft-tproxy
-  kmod-nf-socket kmod-nf-tproxy kmod-nf-conntrack-netlink
-  libnetfilter-conntrack3 libnfnetlink0 libnettle8 libgmp10
 )
 for package in "${required_packages[@]}"; do
   has_package "${package}" || {
@@ -73,14 +69,14 @@ done
 forbidden_packages=(
   h5000m-fancontrol luci-app-h5000m-fancontrol luci-app-h5000m-netmode
   luci-app-mt5700m luci-app-mt5700m-traffic
-  dnsmasq
+  dnsmasq-full kmod-nft-socket kmod-nft-tproxy
   luci-app-passwall luci-app-passwall2 luci-app-homeproxy luci-app-mosdns
   xray-core xray-plugin sing-box hysteria hysteria2 tuic-client naiveproxy
   qmodem ubus-at-daemon sms-tool_q at-webserver
 )
 for package in "${forbidden_packages[@]}"; do
   if has_package "${package}"; then
-    echo "Custom or proxy package is forbidden in the main package: ${package}" >&2
+    echo "Plugin-owned package is forbidden in the main package: ${package}" >&2
     exit 1
   fi
 done

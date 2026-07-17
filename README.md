@@ -11,7 +11,6 @@ Hiveton/Airpi H5000M 的干净基础固件构建项目。主包直接使用 Open
 - 软件包管理器、ttyd（预装但默认停用）
 - 常用诊断、存储和 USB 工具
 - OpenWrt 官方 UPnP LuCI 与 `miniupnpd-nftables`
-- PassWall2 运行基础依赖：`dnsmasq-full`、`kmod-nft-socket`、`kmod-nft-tproxy` 及官方同 ABI 依赖闭包
 - H5000M 插件仓库公钥（仅公钥，不包含签名私钥）
 
 主包明确不包含：
@@ -19,7 +18,7 @@ Hiveton/Airpi H5000M 的干净基础固件构建项目。主包直接使用 Open
 - H5000M 风扇管理
 - MT5700M 模组管理和 5G 流量统计
 - 有线 WAN / 5G 出口优先级
-- PassWall2 主程序、HomeProxy、MosDNS、代理核心或任何节点/分流/凭据配置
+- PassWall2 主程序、运行依赖、代理核心、节点、分流或凭据配置
 - QModem 主程序、第三方 feed、原厂 MT5700M WebUI
 - EEPROM 自动写入、非官方 DTS 或内核补丁
 
@@ -63,7 +62,7 @@ UPnP 来自 OpenWrt 官方软件源，直接预装在主包中，不建立独立
 - ttyd：预装但默认停用
 - SSH：默认开启 root 密码登录，同时保留公钥登录
 - UPnP：软件包默认集成，运行策略仍由 OpenWrt 官方配置控制
-- PassWall2：只预置启动所需基础依赖，不预置 PassWall2 主程序、节点、规则或代理凭据
+- PassWall2：主程序及 `dnsmasq-full`、nftables/kmod 依赖全部由独立离线包负责
 
 ## 首次使用
 
@@ -93,7 +92,7 @@ OPENWRT_LOCAL_ARTIFACTS=/home/builder/artifacts \
 ./scripts/build-official-base-local.sh
 ```
 
-构建脚本会校验 ImageBuilder 哈希、固件版本、Kernel ABI、LuCI、中文、UPnP、PassWall2 基础依赖、`dnsmasq-full` 的 `nftset` 能力、首启默认值和软件包清单，并拒绝任何自研插件、PassWall2 主程序、代理核心或代理配置混入主包。
+构建脚本会校验 ImageBuilder 哈希、固件版本、Kernel ABI、LuCI、中文、UPnP、首启默认值和软件包清单，并确认主包使用官方精简 `dnsmasq`、没有混入 PassWall2 专用 kmod、代理核心或代理配置。
 
 本地构建需要 `curl`、`flock`、GNU Make、`sha256sum`、GNU tar、`unsquashfs` 和 Zstandard 支持。
 
@@ -111,7 +110,7 @@ OPENWRT_LOCAL_ARTIFACTS=/home/builder/artifacts \
 - `SHA256SUMS`
 
 每次构建都会把完整安装清单和基线信息放入产物目录；发布前应核对 `custom_plugins_included=false` 和 `upnp_included=true`。
-PassWall2 相关核对项为 `passwall2_included=false`、`passwall2_runtime_prerequisites_included=true` 和 `dnsmasq_full_with_nftset=true`。
+PassWall2 相关核对项为 `passwall2_included=false`、`passwall2_runtime_prerequisites_included=false` 和 `dnsmasq_variant=compact`。
 
 ## 仓库结构
 
