@@ -1,0 +1,89 @@
+# H5000M integrated daed firmware seed.
+# OpenWrt source must be pinned to r35346-e9aa5bea9f.
+CONFIG_TARGET_mediatek=y
+CONFIG_TARGET_mediatek_filogic=y
+CONFIG_TARGET_mediatek_filogic_DEVICE_hiveton_h5000m=y
+
+# daed requires kernel CO-RE BTF and XDP socket support.
+CONFIG_DEVEL=y
+CONFIG_KERNEL_DEBUG_INFO=y
+# CONFIG_KERNEL_DEBUG_INFO_REDUCED is not set
+CONFIG_KERNEL_DEBUG_INFO_BTF=y
+CONFIG_KERNEL_CGROUPS=y
+CONFIG_KERNEL_CGROUP_BPF=y
+CONFIG_KERNEL_BPF_EVENTS=y
+CONFIG_BPF_TOOLCHAIN_HOST=y
+CONFIG_BPF_TOOLCHAIN_HOST_PATH="/usr/lib/llvm-14"
+CONFIG_KERNEL_XDP_SOCKETS=y
+CONFIG_PACKAGE_kmod-xdp-sockets-diag=y
+CONFIG_DAED_USE_KERNEL_BTF=y
+# CONFIG_DAED_USE_VMLINUX_BTF is not set
+
+# Web management and Chinese localization.
+CONFIG_PACKAGE_luci=y
+CONFIG_PACKAGE_luci-ssl=y
+CONFIG_PACKAGE_luci-app-package-manager=y
+CONFIG_PACKAGE_luci-app-ttyd=y
+CONFIG_LUCI_LANG_zh_Hans=y
+CONFIG_PACKAGE_luci-i18n-base-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-firewall-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-package-manager-zh-cn=y
+CONFIG_PACKAGE_luci-i18n-ttyd-zh-cn=y
+
+# Official UPnP stack.
+CONFIG_PACKAGE_luci-app-upnp=y
+CONFIG_PACKAGE_luci-i18n-upnp-zh-cn=y
+CONFIG_PACKAGE_miniupnpd-nftables=y
+
+# Common administration and diagnostics.
+CONFIG_PACKAGE_ca-bundle=y
+CONFIG_PACKAGE_curl=y
+CONFIG_PACKAGE_wget-ssl=y
+CONFIG_PACKAGE_bash=y
+CONFIG_PACKAGE_nano=y
+CONFIG_PACKAGE_htop=y
+CONFIG_PACKAGE_ethtool=y
+CONFIG_PACKAGE_ip-full=y
+# CONFIG_PACKAGE_ip-tiny is not set
+CONFIG_PACKAGE_tcpdump-mini=y
+CONFIG_PACKAGE_lsof=y
+CONFIG_PACKAGE_bind-dig=y
+CONFIG_PACKAGE_jq=y
+CONFIG_PACKAGE_rsync=y
+CONFIG_PACKAGE_unzip=y
+CONFIG_PACKAGE_tar=y
+CONFIG_PACKAGE_openssh-sftp-server=y
+
+# Common USB and removable-storage support.
+CONFIG_PACKAGE_block-mount=y
+CONFIG_PACKAGE_kmod-usb2=y
+CONFIG_PACKAGE_kmod-usb3=y
+CONFIG_PACKAGE_kmod-usb-storage=y
+CONFIG_PACKAGE_kmod-usb-serial=y
+CONFIG_PACKAGE_kmod-usb-serial-option=y
+CONFIG_PACKAGE_kmod-usb-net=y
+CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y
+CONFIG_PACKAGE_kmod-usb-net-cdc-ncm=y
+CONFIG_PACKAGE_kmod-fs-ext4=y
+CONFIG_PACKAGE_kmod-fs-exfat=y
+CONFIG_PACKAGE_kmod-fs-ntfs3=y
+CONFIG_PACKAGE_usbutils=y
+CONFIG_PACKAGE_pciutils=y
+
+# daed and Chinese LuCI frontend. It remains disabled until configured.
+CONFIG_PACKAGE_daed=y
+CONFIG_PACKAGE_luci-app-daed=y
+CONFIG_PACKAGE_luci-i18n-daed-zh-cn=y
+CONFIG_PACKAGE_daed-geodata-bundle=y
+CONFIG_PACKAGE_luci-app-daed-geodata=y
+CONFIG_PACKAGE_luci-i18n-daed-geodata-zh-cn=y
+
+# H5000M product plugins.
+CONFIG_PACKAGE_luci-app-h5000m-fancontrol=y
+CONFIG_PACKAGE_luci-i18n-h5000m-fancontrol-zh-cn=y
+CONFIG_PACKAGE_luci-app-h5000m-netmode=y
+CONFIG_PACKAGE_luci-i18n-h5000m-netmode-zh-cn=y
+CONFIG_PACKAGE_luci-app-mt5700m=y
+CONFIG_PACKAGE_luci-i18n-mt5700m-zh-cn=y
+CONFIG_PACKAGE_ubus-at-daemon=y
+CONFIG_PACKAGE_sms-tool_q=y

@@ -1,22 +1,44 @@
 #!/bin/sh
 
 # Keep the official device and port definitions intact. This script only
-# supplies product-level locale and management defaults.
-uci -q set system.@system[0].hostname='H5000M'
-uci -q set system.@system[0].zonename='Asia/Shanghai'
-uci -q set system.@system[0].timezone='CST-8'
-uci -q set luci.main.lang='zh_cn'
-uci -q set network.lan.ipaddr='192.168.10.1'
-uci -q set network.lan.netmask='255.255.255.0'
+# supplies product-level defaults on the first installation. The marker is
+# preserved by sysupgrade so subsequent images never reset user settings.
+MARKER='/etc/h5000m-defaults-applied'
+[ ! -e "${MARKER}" ] || exit 0
+
+hostname="$(uci -q get system.@system[0].hostname 2>/dev/null || true)"
+case "${hostname}" in
+	''|OpenWrt|openwrt) uci -q set system.@system[0].hostname='H5000M' ;;
+esac
+
+zonename="$(uci -q get system.@system[0].zonename 2>/dev/null || true)"
+case "${zonename}" in ''|UTC) uci -q set system.@system[0].zonename='Asia/Shanghai' ;; esac
+timezone="$(uci -q get system.@system[0].timezone 2>/dev/null || true)"
+case "${timezone}" in ''|UTC0) uci -q set system.@system[0].timezone='CST-8' ;; esac
+
+language="$(uci -q get luci.main.lang 2>/dev/null || true)"
+case "${language}" in ''|auto|en) uci -q set luci.main.lang='zh_cn' ;; esac
+
+lan_ip="$(uci -q get network.lan.ipaddr 2>/dev/null || true)"
+case "${lan_ip}" in
+	''|192.168.1.1)
+		uci -q set network.lan.ipaddr='192.168.10.1'
+		uci -q set network.lan.netmask='255.255.255.0'
+		;;
+esac
 
 if [ -f /etc/config/uhttpd ]; then
-	uci -q set uhttpd.main.redirect_https='1'
+	redirect_https="$(uci -q get uhttpd.main.redirect_https 2>/dev/null || true)"
+	[ -n "${redirect_https}" ] || uci -q set uhttpd.main.redirect_https='1'
 fi
 
 if [ -f /etc/config/dropbear ]; then
-	uci -q set dropbear.@dropbear[0].enable='1'
-	uci -q set dropbear.@dropbear[0].PasswordAuth='on'
-	uci -q set dropbear.@dropbear[0].RootPasswordAuth='on'
+	dropbear_enable="$(uci -q get dropbear.@dropbear[0].enable 2>/dev/null || true)"
+	password_auth="$(uci -q get dropbear.@dropbear[0].PasswordAuth 2>/dev/null || true)"
+	root_password_auth="$(uci -q get dropbear.@dropbear[0].RootPasswordAuth 2>/dev/null || true)"
+	[ -n "${dropbear_enable}" ] || uci -q set dropbear.@dropbear[0].enable='1'
+	[ -n "${password_auth}" ] || uci -q set dropbear.@dropbear[0].PasswordAuth='on'
+	[ -n "${root_password_auth}" ] || uci -q set dropbear.@dropbear[0].RootPasswordAuth='on'
 fi
 
 if [ -x /etc/init.d/ttyd ]; then
@@ -24,12 +46,18 @@ if [ -x /etc/init.d/ttyd ]; then
 fi
 
 # Provide the requested first-boot credentials. SSH public-key login remains
-# available in addition to password authentication.
-if command -v chpasswd >/dev/null 2>&1; then
-	echo 'root:root' | chpasswd
-else
-	(printf 'root\nroot\n' | passwd root) >/dev/null 2>&1 || true
-fi
+# available in addition to password authentication. Never replace an existing
+# password hash when migrating from an older image.
+root_hash="$(awk -F: '$1 == "root" { print $2; exit }' /etc/shadow 2>/dev/null)"
+case "${root_hash}" in
+	''|'!'|'*')
+		if command -v chpasswd >/dev/null 2>&1; then
+			echo 'root:root' | chpasswd
+		else
+			(printf 'root\nroot\n' | passwd root) >/dev/null 2>&1 || true
+		fi
+		;;
+esac
 
 # Bring up both official mac80211 radios with one shared network name. Keeping
 # the same SSID, security mode and key allows clients to choose the better band;
@@ -37,34 +65,49 @@ fi
 # Do not set bss_transition here: the official compact wpad variant does not
 # accept that hostapd option and would reject the entire AP configuration.
 if [ -f /etc/config/wireless ]; then
-	for radio in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-device$/\1/p'); do
-		band="$(uci -q get "${radio}.band")"
-		uci -q set "${radio}.country=CN"
-		uci -q set "${radio}.disabled=0"
-		case "${band}" in
-			2g)
-				uci -q set "${radio}.htmode=EHT40"
-				;;
-			5g)
-				uci -q set "${radio}.htmode=EHT160"
-				;;
-		esac
-	done
-
+	configure_wifi=0
+	custom_wifi=0
 	for iface in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-iface$/\1/p'); do
 		[ "$(uci -q get "${iface}.mode")" = 'ap' ] || continue
-		# Remove the incompatible option from preserved configurations created
-		# by earlier H5000M images before hostapd reads the AP definition.
-		uci -q delete "${iface}.bss_transition"
-		uci -q set "${iface}.ssid=H5000M"
-		uci -q set "${iface}.encryption=sae-mixed"
-		uci -q set "${iface}.key=77778888"
-		uci -q set "${iface}.ieee80211w=1"
-		uci -q set "${iface}.ieee80211k=1"
-		uci -q set "${iface}.rrm_neighbor_report=1"
-		uci -q set "${iface}.rrm_beacon_report=1"
-		uci -q set "${iface}.disabled=0"
+		ssid="$(uci -q get "${iface}.ssid" 2>/dev/null || true)"
+		case "${ssid}" in
+			''|OpenWrt|openwrt) configure_wifi=1 ;;
+			*) custom_wifi=1 ;;
+		esac
 	done
+	# A pre-marker upgrade may contain one customized AP and one untouched AP.
+	# Preserve the complete WiFi setup in that case instead of rewriting the
+	# customized band merely because its sibling still has the OpenWrt SSID.
+	[ "${custom_wifi}" = '0' ] || configure_wifi=0
+
+	if [ "${configure_wifi}" = '1' ]; then
+		for radio in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-device$/\1/p'); do
+			band="$(uci -q get "${radio}.band")"
+			uci -q set "${radio}.country=CN"
+			uci -q set "${radio}.disabled=0"
+			case "${band}" in
+				2g)
+					uci -q set "${radio}.htmode=EHT40"
+					;;
+				5g)
+					uci -q set "${radio}.htmode=EHT160"
+					;;
+			esac
+		done
+
+		for iface in $(uci -q show wireless | sed -n 's/^\(wireless\.[^.]*\)=wifi-iface$/\1/p'); do
+			[ "$(uci -q get "${iface}.mode")" = 'ap' ] || continue
+			uci -q delete "${iface}.bss_transition"
+			uci -q set "${iface}.ssid=H5000M"
+			uci -q set "${iface}.encryption=sae-mixed"
+			uci -q set "${iface}.key=77778888"
+			uci -q set "${iface}.ieee80211w=1"
+			uci -q set "${iface}.ieee80211k=1"
+			uci -q set "${iface}.rrm_neighbor_report=1"
+			uci -q set "${iface}.rrm_beacon_report=1"
+			uci -q set "${iface}.disabled=0"
+		done
+	fi
 fi
 
 uci -q commit system
@@ -73,5 +116,8 @@ uci -q commit network
 uci -q commit uhttpd
 uci -q commit dropbear
 uci -q commit wireless
+
+touch "${MARKER}"
+chmod 0600 "${MARKER}"
 
 exit 0

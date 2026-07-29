@@ -1,0 +1,12 @@
+openwrt_revision=r35346-e9aa5bea9f
+kernel=6.18.38
+kernel_abi=bb7dfc1e1b69d39769207e9216195f51
+profile=hiveton_h5000m
+kernel_btf=true
+xdp_sockets=true
+daed_package=2026.07.17-r1
+geodata_manager=1.1.0-r1
+v2fly_geoip=202607171233
+v2fly_geosite=20260729030225
+loyalsoldier_geoip=202607282253
+loyalsoldier_geosite=202607282253

@@ -24,6 +24,14 @@ Hiveton/Airpi H5000M 的干净基础固件构建项目。主包直接使用 Open
 
 这些功能以独立签名插件交付，插件故障不会影响基础系统启动。
 
+## daed 集成变体
+
+daed 依赖内核 BTF 与 XDP sockets，官方 H5000M 镜像未提供这两个能力，因此
+另设同一官方源码版本构建的 daed 集成变体。该变体不改变主包的干净
+ImageBuilder 路线，也不向官方 ABI 固件混装内核模块。它只对风扇 cooling-map
+做最小 DTS 调整，CPU 降频、hot/critical 保护仍由内核管理。配置边界、双版本
+GeoData 和验证要求见 [`docs/DAED-INTEGRATED.md`](docs/DAED-INTEGRATED.md)。
+
 ## 独立插件
 
 | 功能 | 独立仓库 |
@@ -72,6 +80,8 @@ UPnP 来自 OpenWrt 官方软件源，直接预装在主包中，不建立独立
 4. 安装或升级后保留对应固件、插件包和 `SHA256SUMS`，便于恢复与核验。
 
 默认管理密码和无线密码用于首次部署，均属于公开弱密码。设备接入不受信任网络前应立即修改。
+这些产品默认值只在首次安装时写入；标记文件会随 sysupgrade 保留，后续升级不会
+重置主机名、LAN、SSH、WiFi 或 root 密码。
 
 插件压缩包、APK 和 `packages.adb` 都不是固件，不能通过 U-Boot 或 LuCI 固件升级页面刷写。
 

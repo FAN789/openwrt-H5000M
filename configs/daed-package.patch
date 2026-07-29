@@ -1,0 +1,11 @@
+--- a/feeds/daed/daed/Makefile
++++ b/feeds/daed/daed/Makefile
+@@ -62,7 +62,7 @@ define Package/daed
+   TITLE:=A Modern Dashboard For dae
+   DEPENDS:=$(GO_ARCH_DEPENDS) \
+     +ca-bundle +kmod-sched-core +kmod-sched-bpf \
+-    +kmod-veth +v2ray-geoip +v2ray-geosite \
++    +kmod-veth +daed-geodata-bundle \
+     +@KERNEL_XDP_SOCKETS \
+     +DAED_USE_VMLINUX_BTF:vmlinux-btf
+ endef

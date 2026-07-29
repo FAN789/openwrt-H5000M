@@ -1,0 +1,23 @@
+--- a/feeds/daed/daed/Makefile
++++ b/feeds/daed/daed/Makefile
+@@ -98,12 +98,8 @@ define Build/Prepare
+ 			git -C $(PKG_BUILD_DIR)/dae-core checkout $(CORE_HASH_SHORT) ; \
+ 		pushd $(PKG_BUILD_DIR)/dae-core ; \
+ 			git submodule update --init ; \
+-			go get -u=patch ; \
+-			go mod tidy ; \
+ 		popd ; \
+ 		pushd $(PKG_BUILD_DIR) ; \
+-			go get -u=patch ; \
+-			go mod tidy ; \
+ 			wget -qO default.pgo "https://github.com/QiuSimons/luci-app-dae/raw/refs/heads/kix/dae/pprof/default.pgo" ; \
+ 		popd ; \
+ 		mkdir -p $(DAED_BUILD_DIR)/.node_tmp/config ; \
+@@ -112,6 +108,6 @@ define Build/Prepare
+ 		export PATH="$(DAED_BUILD_DIR)/.node_tmp/bin:$$$$PATH" ; \
+ 		export XDG_CONFIG_HOME="$(DAED_BUILD_DIR)/.node_tmp/config" ; \
+-		npm install -g pnpm ; \
++		npm install -g pnpm@10.24.0 ; \
+ 		pushd $(DAED_BUILD_DIR) ; \
+ 			pnpm install ; \
+ 			pnpm build --filter daed ; \
