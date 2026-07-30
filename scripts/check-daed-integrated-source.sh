@@ -34,6 +34,8 @@ source "${ENV_FILE}"
 
 for option in \
 	CONFIG_TARGET_mediatek_filogic_DEVICE_hiveton_h5000m \
+	CONFIG_IMAGEOPT \
+	CONFIG_VERSIONOPT \
 	CONFIG_KERNEL_DEBUG_INFO_BTF \
 	CONFIG_KERNEL_CGROUP_BPF \
 	CONFIG_KERNEL_BPF_EVENTS \
@@ -48,6 +50,7 @@ for option in \
 	CONFIG_PACKAGE_luci-app-mt5700m; do
 	grep -qx "${option}=y" "${SEED}"
 done
+grep -qx "CONFIG_VERSION_CODE=\"${OPENWRT_REVISION}\"" "${SEED}"
 grep -qx 'CONFIG_BPF_TOOLCHAIN_HOST_PATH="/usr/lib/llvm-14"' "${SEED}"
 
 grep -q '^+    +kmod-veth +daed-geodata-bundle' "${PATCH}"

@@ -3,6 +3,9 @@
 CONFIG_TARGET_mediatek=y
 CONFIG_TARGET_mediatek_filogic=y
 CONFIG_TARGET_mediatek_filogic_DEVICE_hiveton_h5000m=y
+CONFIG_IMAGEOPT=y
+CONFIG_VERSIONOPT=y
+CONFIG_VERSION_CODE="r35346-e9aa5bea9f"
 
 # daed requires kernel CO-RE BTF and XDP socket support.
 CONFIG_DEVEL=y
