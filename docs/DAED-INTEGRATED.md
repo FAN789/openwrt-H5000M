@@ -23,7 +23,10 @@
 `configs/daed-runtime.patch`，去除非确定性 Go 模块更新并固定 pnpm 的补丁见
 `configs/daed-reproducible.patch`，处理上游递归源码包中已包含 wing 的补丁见
 `configs/daed-source-layout.patch`，风扇 PWM 独占所需的最小 DTS 修改见
-`configs/h5000m-fan-cooling-map.patch`，源码与 feeds 固定版本见
+`configs/h5000m-fan-cooling-map.patch`。daed 原面板会继承 LuCI 的 HTTPS
+协议并尝试用 HTTPS 访问仅提供 HTTP 的 2023 端口，因此
+`configs/luci-app-daed-dashboard.patch` 会取消混合内容 iframe，改为使用
+当前 LuCI 主机地址在新标签打开 HTTP 面板。源码与 feeds 固定版本见
 `configs/integrated-daed.env`。生成的系统必须包含
 `/etc/h5000m-daed-build`，独立 daed 离线包也会检查该标记，禁止安装到不兼容
 内核。

@@ -10,10 +10,11 @@ RUNTIME_PATCH="${ROOT_DIR}/configs/daed-runtime.patch"
 REPRO_PATCH="${ROOT_DIR}/configs/daed-reproducible.patch"
 LAYOUT_PATCH="${ROOT_DIR}/configs/daed-source-layout.patch"
 FAN_PATCH="${ROOT_DIR}/configs/h5000m-fan-cooling-map.patch"
+DASHBOARD_PATCH="${ROOT_DIR}/configs/luci-app-daed-dashboard.patch"
 MARKER="${ROOT_DIR}/integrated-daed-files/etc/h5000m-daed-build"
 
 for file in "${ENV_FILE}" "${SEED}" "${PATCH}" "${RUNTIME_PATCH}" \
-	"${REPRO_PATCH}" "${LAYOUT_PATCH}" "${FAN_PATCH}" "${MARKER}" \
+	"${REPRO_PATCH}" "${LAYOUT_PATCH}" "${FAN_PATCH}" "${DASHBOARD_PATCH}" "${MARKER}" \
 	"${ROOT_DIR}/docs/DAED-INTEGRATED.md"; do
 	[ -s "${file}" ] || {
 		echo "Missing daed integration file: ${file}" >&2
@@ -53,6 +54,11 @@ grep -q '^-.*git clone.*dae-wing' "${LAYOUT_PATCH}"
 grep -q '/delete-node/ cpu-active-high' "${FAN_PATCH}"
 grep -q '/delete-node/ cpu-active-low' "${FAN_PATCH}"
 grep -q '/delete-node/ cpu-passive' "${FAN_PATCH}"
+grep -q '^+PKG_RELEASE:=3' "${DASHBOARD_PATCH}"
+grep -q '^+.*var url = "http://" + hostname' "${DASHBOARD_PATCH}"
+grep -q 'var hostname = window.location.hostname' "${DASHBOARD_PATCH}"
+grep -q '^+.*target="_blank"' "${DASHBOARD_PATCH}"
+! grep -q '^+.*<iframe' "${DASHBOARD_PATCH}"
 grep -qx "openwrt_revision=${OPENWRT_REVISION}" "${MARKER}"
 grep -qx "kernel_abi=${KERNEL_ABI}" "${MARKER}"
 grep -qx "daed_package=${DAED_VERSION}" "${MARKER}"

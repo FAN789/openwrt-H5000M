@@ -1,0 +1,91 @@
+--- a/feeds/daed/luci-app-daed/Makefile
++++ b/feeds/daed/luci-app-daed/Makefile
+@@ -2,7 +2,7 @@
+ 
+ PKG_NAME:=luci-app-daed
+ PKG_VERSION:=1.4
+-PKG_RELEASE:=1
++PKG_RELEASE:=3
+ 
+ LUCI_TITLE:=LuCI Support for DAED
+ LUCI_DEPENDS:=+daed +zoneinfo-asia +luci-compat
+--- a/feeds/daed/luci-app-daed/luasrc/view/daed/daed.htm
++++ b/feeds/daed/luci-app-daed/luasrc/view/daed/daed.htm
+@@ -4,18 +4,46 @@
+ %>
+ <% if tonumber(running) ~= nil then %>
+ 	<div class="cbi-map">
+-		<iframe id="daed" class="daed-iframe"></iframe>
++		<div class="daed-launch">
++			<div class="daed-launch-icon">D</div>
++			<h2><%:DAED Dashboard%></h2>
++			<p><%:The dashboard uses a separate HTTP service and must be opened in a new tab.%></p>
++			<a id="daed-open" class="btn cbi-button cbi-button-positive" target="_blank" rel="noopener noreferrer"><%:Open Dashboard%></a>
++			<div id="daed-url" class="daed-url"></div>
++		</div>
+ 	</div>
+ 	<style>
+-	.daed-iframe {
+-		width: 100%;
+-		height: 100vh;
+-		min-height: 780px;
+-		border: none;
+-		border-radius: .375rem;
+-		box-shadow: rgba(0, 0, 0, 0.75) 0px 0px 15px -5px;
+-		display: block;
++	.daed-launch {
++		max-width: 620px;
++		margin: 48px auto;
++		padding: 38px 28px;
++		text-align: center;
++		border: 1px solid var(--border-color-medium, #d8dde6);
++		border-radius: 14px;
++		background: var(--background-color-high, #fff);
+ 	}
++	.daed-launch-icon {
++		width: 58px;
++		height: 58px;
++		margin: 0 auto 18px;
++		border-radius: 16px;
++		color: #fff;
++		background: linear-gradient(135deg, #1677ff, #7546e8);
++		font: 700 30px/58px sans-serif;
++	}
++	.daed-launch h2 {
++		margin: 0 0 10px;
++	}
++	.daed-launch p {
++		color: var(--text-color-medium, #667085);
++		margin: 0 auto 24px;
++	}
++	.daed-url {
++		margin-top: 18px;
++		color: var(--text-color-medium, #667085);
++		font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
++		word-break: break-all;
++	}
+ 	</style>
+ 	<script type="text/javascript">
+ 		var listenAddr = "<%=luci.model.uci.cursor():get_first("daed", "daed", "listen_addr") or ''%>";
+@@ -33,15 +61,15 @@
+ 		}
+ 		
+ 		if (port) {
+-			var protocol = window.location.protocol;
+ 			var hostname = window.location.hostname;
+-			var url = protocol + "//" + hostname;
+-			
+-			if (!((protocol === "http:" && port === "80") || (protocol === "https:" && port === "443"))) {
++			var url = "http://" + hostname;
++
++			if (port !== "80") {
+ 				url += ":" + port;
+ 			}
+-			
+-			document.getElementById("daed").src = url;
++
++			document.getElementById("daed-open").href = url;
++			document.getElementById("daed-url").textContent = url;
+ 		}
+ 	</script>
+ <% else %>
