@@ -27,6 +27,12 @@ case "${lan_ip}" in
 		;;
 esac
 
+# Prefer the delegated public prefix on ordinary home networks. ULA remains
+# available as an opt-in feature for site-to-site IPv6, NAT66 or stable private
+# addressing, but advertising both ULA and GUA by default can cause clients to
+# select an unusable IPv6 source address during WAN/MT5700M failover.
+uci -q delete network.globals.ula_prefix
+
 if [ -f /etc/config/uhttpd ]; then
 	redirect_https="$(uci -q get uhttpd.main.redirect_https 2>/dev/null || true)"
 	[ -n "${redirect_https}" ] || uci -q set uhttpd.main.redirect_https='1'

@@ -7,6 +7,7 @@ xdp_sockets=true
 daed_package=2026.07.17-r1
 daed_defaults=1.0.0-r2
 geodata_manager=1.2.2-r1
+mt5700m_manager=2.3.1-r1
 v2fly_geoip=202607171233
 v2fly_geosite=20260729030225
 loyalsoldier_geoip=202607282253

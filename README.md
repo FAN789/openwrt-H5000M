@@ -74,6 +74,7 @@ UPnP 来自 OpenWrt 官方软件源，直接预装在主包中，不建立独立
 - ttyd：预装但默认停用
 - SSH：默认开启 root 密码登录，同时保留公钥登录
 - UPnP：软件包默认集成，运行策略仍由 OpenWrt 官方配置控制
+- IPv6：默认不分配 ULA，仅使用活动上游委派的公网前缀；ULA 可由高级用户按需启用
 - PassWall2：主程序及 `dnsmasq-full`、nftables/kmod 依赖全部由独立离线包负责
 
 ## 首次使用

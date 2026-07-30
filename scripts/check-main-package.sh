@@ -83,6 +83,8 @@ done
 
 bash -n "${ROOT_DIR}/scripts/build-official-base-local.sh"
 sh -n "${ROOT_DIR}/official-base-files/etc/uci-defaults/90-h5000m-base"
+grep -q 'delete network.globals.ula_prefix' \
+  "${ROOT_DIR}/official-base-files/etc/uci-defaults/90-h5000m-base"
 openssl pkey -pubin \
   -in "${ROOT_DIR}/official-base-files/etc/apk/keys/h5000m-plugins.pem" \
   -noout >/dev/null
