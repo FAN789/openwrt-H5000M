@@ -27,7 +27,9 @@
 `configs/h5000m-fan-cooling-map.patch`。daed 原面板会继承 LuCI 的 HTTPS
 协议并尝试用 HTTPS 访问仅提供 HTTP 的 2023 端口，因此
 `configs/luci-app-daed-dashboard.patch` 会取消混合内容 iframe，改为使用
-当前 LuCI 主机地址在新标签打开 HTTP 面板。源码与 feeds 固定版本见
+当前 LuCI 主机地址在新标签打开 HTTP 面板；同时移除上游对每次 WAN 地址更新
+都重启 daed 的热插拔脚本，出口真正变化时只由 H5000M 出口策略统一重启。
+源码与 feeds 固定版本见
 `configs/integrated-daed.env`。生成的系统必须包含
 `/etc/h5000m-daed-build`，独立 daed 离线包也会检查该标记，禁止安装到不兼容
 内核。
