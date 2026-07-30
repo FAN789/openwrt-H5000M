@@ -12,6 +12,9 @@ grep -q 'root_hash=' "${DEFAULTS}"
 grep -q 'configure_wifi=0' "${DEFAULTS}"
 grep -q 'custom_wifi=0' "${DEFAULTS}"
 grep -q "\\[ \"\\\${custom_wifi}\" = '0' \\] || configure_wifi=0" "${DEFAULTS}"
+grep -Fq '192.168.1.1|192.168.1.1/24)' "${DEFAULTS}"
+grep -Fq "uci -q add_list network.lan.ipaddr='192.168.10.1/24'" "${DEFAULTS}"
+grep -Fq 'uci -q delete network.lan.netmask' "${DEFAULTS}"
 
 for repo in \
 	"${ROOT}/../luci-app-mt5700m/luci-app-mt5700m" \

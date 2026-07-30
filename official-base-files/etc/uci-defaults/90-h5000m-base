@@ -21,9 +21,13 @@ case "${language}" in ''|auto|en) uci -q set luci.main.lang='zh_cn' ;; esac
 
 lan_ip="$(uci -q get network.lan.ipaddr 2>/dev/null || true)"
 case "${lan_ip}" in
-	''|192.168.1.1)
-		uci -q set network.lan.ipaddr='192.168.10.1'
-		uci -q set network.lan.netmask='255.255.255.0'
+	''|192.168.1.1|192.168.1.1/24)
+		# Current OpenWrt generates this value as a CIDR list entry. Replace
+		# either legacy representation so a factory reset always reaches the
+		# documented H5000M address.
+		uci -q delete network.lan.ipaddr
+		uci -q add_list network.lan.ipaddr='192.168.10.1/24'
+		uci -q delete network.lan.netmask
 		;;
 esac
 
