@@ -12,11 +12,12 @@ LAYOUT_PATCH="${ROOT_DIR}/configs/daed-source-layout.patch"
 FAN_PATCH="${ROOT_DIR}/configs/h5000m-fan-cooling-map.patch"
 DASHBOARD_PATCH="${ROOT_DIR}/configs/luci-app-daed-dashboard.patch"
 WEB_DEFAULTS_PATCH="${ROOT_DIR}/configs/daed-web-defaults.patch"
+RUNTIME_OPT_PATCH="${ROOT_DIR}/configs/daed-runtime-optimizations.patch"
 MARKER="${ROOT_DIR}/integrated-daed-files/etc/h5000m-daed-build"
 
 for file in "${ENV_FILE}" "${SEED}" "${PATCH}" "${RUNTIME_PATCH}" \
 	"${REPRO_PATCH}" "${LAYOUT_PATCH}" "${FAN_PATCH}" "${DASHBOARD_PATCH}" \
-	"${WEB_DEFAULTS_PATCH}" "${MARKER}" \
+	"${WEB_DEFAULTS_PATCH}" "${RUNTIME_OPT_PATCH}" "${MARKER}" \
 	"${ROOT_DIR}/docs/DAED-INTEGRATED.md"; do
 	[ -s "${file}" ] || {
 		echo "Missing daed integration file: ${file}" >&2
@@ -29,7 +30,7 @@ source "${ENV_FILE}"
 
 [[ "${OPENWRT_COMMIT}" =~ ^[0-9a-f]{40}$ ]]
 [ "${OPENWRT_REVISION}" = r35346-e9aa5bea9f ]
-[ "${DAED_VERSION}" = 2026.07.17-r2 ]
+[ "${DAED_VERSION}" = 2026.07.17-r3 ]
 
 for option in \
 	CONFIG_TARGET_mediatek_filogic_DEVICE_hiveton_h5000m \
@@ -64,12 +65,17 @@ grep -q '^+.*var url = "http://" + hostname' "${DASHBOARD_PATCH}"
 grep -q 'var hostname = window.location.hostname' "${DASHBOARD_PATCH}"
 grep -q '^+.*target="_blank"' "${DASHBOARD_PATCH}"
 ! grep -q '^+.*<iframe' "${DASHBOARD_PATCH}"
-grep -q '^+PKG_RELEASE:=2' "${PATCH}"
+grep -q '^+PKG_RELEASE:=3' "${PATCH}"
+grep -Fq '+		patch -d $(DAED_BUILD_DIR) -p1 < \' "${PATCH}"
+grep -Fq 'h5000m-web-defaults.patch' "${PATCH}"
+grep -Fq 'h5000m-runtime-optimizations.patch' "${PATCH}"
 grep -Fq '+export const DEFAULT_CHECK_INTERVAL_SECONDS = 60' "${WEB_DEFAULTS_PATCH}"
 grep -Fq '+export const DEFAULT_CHECK_TOLERANCE_MS = 50' "${WEB_DEFAULTS_PATCH}"
 grep -Fq '+export const DEFAULT_DISABLE_WAITING_NETWORK = true' "${WEB_DEFAULTS_PATCH}"
 grep -Fq "+dip(224.0.0.0/3, 'ff00::/8') -> direct" "${WEB_DEFAULTS_PATCH}"
 grep -Fq '+    qtype(https) -> reject' "${WEB_DEFAULTS_PATCH}"
+grep -Fq '+const Timeout = 5 * time.Second' "${RUNTIME_OPT_PATCH}"
+grep -Fq 'delete from group_nodes where node_id in ?' "${RUNTIME_OPT_PATCH}"
 grep -qx "openwrt_revision=${OPENWRT_REVISION}" "${MARKER}"
 grep -qx "kernel_abi=${KERNEL_ABI}" "${MARKER}"
 grep -qx "daed_package=${DAED_VERSION}" "${MARKER}"

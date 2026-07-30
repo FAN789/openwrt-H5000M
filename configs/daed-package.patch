@@ -4,7 +4,7 @@
  WING_HASH_SHORT:=$(shell echo $(WING_VERSION) | cut -d- -f2)
  CORE_HASH_SHORT:=$(shell echo $(CORE_VERSION) | cut -d- -f2)
 -PKG_RELEASE:=1
-+PKG_RELEASE:=2
++PKG_RELEASE:=3
  
  PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
  PKG_SOURCE_PROTO:=git
@@ -17,3 +17,17 @@
      +@KERNEL_XDP_SOCKETS \
      +DAED_USE_VMLINUX_BTF:vmlinux-btf
  endef
+@@ -102,11 +102,15 @@ define Build/Prepare
+ 		rm -rf $(DAED_BUILD_DIR) ; \
+ 		mkdir -p $(DAED_BUILD_DIR) ; \
+ 		$(TAR) --strip-components=1 -C $(DAED_BUILD_DIR) -xzf $(DL_DIR)/$(PKG_NAME)-$(PKG_VERSION).tar.gz ; \
++		patch -d $(DAED_BUILD_DIR) -p1 < \
++			$(CURDIR)/files/h5000m-web-defaults.patch || exit 1 ; \
+ 		rm -rf $(PKG_BUILD_DIR)/dae-core ; \
+ 		git clone https://github.com/daeuniverse/dae $(PKG_BUILD_DIR)/dae-core && \
+ 			git -C $(PKG_BUILD_DIR)/dae-core checkout $(CORE_HASH_SHORT) ; \
++		patch -d $(DAED_BUILD_DIR) -p1 < \
++			$(CURDIR)/files/h5000m-runtime-optimizations.patch || exit 1 ; \
+ 		pushd $(PKG_BUILD_DIR)/dae-core ; \
+ 			git submodule update --init ; \
+ 		popd ; \

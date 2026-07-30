@@ -32,6 +32,12 @@
 `configs/daed-web-defaults.patch` 把 H5000M 增强全局、DNS 和路由规则放入
 daed 自己的首位用户初始化模板。数据库种子只保留停止状态的 system 行，不再
 预建同名资源，避免前端首次登录再次生成一套默认配置。
+`configs/daed-runtime-optimizations.patch` 将节点健康检查单次超时收紧为 5 秒，
+仍保留一次重试及 TCP/UDP、IPv4/IPv6 自动择优；删除节点时同步清除策略组绑定，
+避免孤儿 `group_nodes` 记录和外键错误。
+由于上游软件包使用自定义 `Build/Prepare`，`configs/daed-package.patch` 会在
+前端和 Go 编译前显式应用上述两个源码补丁；构建不得只把它们复制到普通
+`patches/` 目录。
 源码与 feeds 固定版本见
 `configs/integrated-daed.env`。生成的系统必须包含
 `/etc/h5000m-daed-build`，独立 daed 离线包也会检查该标记，禁止安装到不兼容

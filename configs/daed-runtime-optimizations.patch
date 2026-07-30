@@ -1,0 +1,30 @@
+--- a/wing/dae-core/component/outbound/dialer/connectivity_check.go
++++ b/wing/dae-core/component/outbound/dialer/connectivity_check.go
+@@ -35,7 +35,10 @@ import (
+ 	"github.com/sirupsen/logrus"
+ )
+ 
+-const Timeout = 10 * time.Second
++// Bound each health-check attempt so one unavailable TCP/UDP or IPv6 path
++// cannot hold the initial control-plane activation for twenty seconds. Checks
++// still retry once and continue periodically according to check_interval.
++const Timeout = 5 * time.Second
+ 
+ type UdpHealthDomain uint8
+ 
+--- a/wing/graphql/service/node/mutation_utils.go
++++ b/wing/graphql/service/node/mutation_utils.go
+@@ -137,6 +137,13 @@ func Remove(ctx context.Context, _ids []
+ 		return 0, err
+ 	}
+ 
++	// Node has no reverse many-to-many field, so Select(clause.Associations)
++	// does not remove group_nodes rows. Delete the join rows explicitly to
++	// prevent stale policy bindings and foreign-key violations.
++	if err = tx.Exec("delete from group_nodes where node_id in ?", ids).Error; err != nil {
++		return 0, err
++	}
++
+ 	// Remove.
+ 	q := tx.Where("id in ?", ids).
+ 		Select(clause.Associations).
