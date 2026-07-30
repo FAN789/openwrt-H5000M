@@ -1,5 +1,13 @@
 --- a/feeds/daed/daed/Makefile
 +++ b/feeds/daed/daed/Makefile
+@@ -10,7 +10,7 @@ CORE_VERSION:=core-09c6c8c
+ WING_HASH_SHORT:=$(shell echo $(WING_VERSION) | cut -d- -f2)
+ CORE_HASH_SHORT:=$(shell echo $(CORE_VERSION) | cut -d- -f2)
+-PKG_RELEASE:=1
++PKG_RELEASE:=2
+ 
+ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+ PKG_SOURCE_PROTO:=git
 @@ -62,7 +62,7 @@ define Package/daed
    TITLE:=A Modern Dashboard For dae
    DEPENDS:=$(GO_ARCH_DEPENDS) \

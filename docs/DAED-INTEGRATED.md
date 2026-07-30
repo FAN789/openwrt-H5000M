@@ -29,6 +29,9 @@
 `configs/luci-app-daed-dashboard.patch` 会取消混合内容 iframe，改为使用
 当前 LuCI 主机地址在新标签打开 HTTP 面板；同时移除上游对每次 WAN 地址更新
 都重启 daed 的热插拔脚本，出口真正变化时只由 H5000M 出口策略统一重启。
+`configs/daed-web-defaults.patch` 把 H5000M 增强全局、DNS 和路由规则放入
+daed 自己的首位用户初始化模板。数据库种子只保留停止状态的 system 行，不再
+预建同名资源，避免前端首次登录再次生成一套默认配置。
 源码与 feeds 固定版本见
 `configs/integrated-daed.env`。生成的系统必须包含
 `/etc/h5000m-daed-build`，独立 daed 离线包也会检查该标记，禁止安装到不兼容
@@ -38,8 +41,9 @@
 [`luci-app-daed-h5000m`](https://github.com/FAN789/luci-app-daed-h5000m)
 仓库提供。该仓库是 daed、GeoData、默认策略和同 ABI 依赖的唯一发布入口；
 OpenWrt 内部仍拆分 APK，以支持安全升级和回滚。默认包只在
-`/etc/daed/wing.db` 不存在时写入清洁种子：daed 管理面板默认启用，代理运行
-状态保持停止。已有数据库与 sysupgrade 保留配置永远不会被默认值覆盖。
+`/etc/daed/wing.db` 不存在时写入空资源的清洁状态库：daed 管理面板默认启用，
+代理运行状态保持停止；首位管理员登录后由前端创建唯一一套默认资源。已有
+数据库与 sysupgrade 保留配置永远不会被默认值覆盖。
 
 ## GeoData
 

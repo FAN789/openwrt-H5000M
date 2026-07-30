@@ -1,0 +1,40 @@
+--- a/apps/web/src/constants/default.ts
++++ b/apps/web/src/constants/default.ts
+@@ -21,14 +21,14 @@ export const DEFAULT_TPROXY_PORT = 123
+ export const DEFAULT_TPROXY_PORT_PROTECT = true
+ export const DEFAULT_SO_MARK_FROM_DAE = 0
+ export const DEFAULT_ALLOW_INSECURE = false
+-export const DEFAULT_CHECK_INTERVAL_SECONDS = 30
+-export const DEFAULT_CHECK_TOLERANCE_MS = 0
++export const DEFAULT_CHECK_INTERVAL_SECONDS = 60
++export const DEFAULT_CHECK_TOLERANCE_MS = 50
+ export const DEFAULT_SNIFFING_TIMEOUT_MS = 100
+ export const DEFAULT_UDP_CHECK_DNS = ['dns.google:53', '8.8.8.8', '2001:4860:4860::8888']
+ export const DEFAULT_TCP_CHECK_URL = ['http://cp.cloudflare.com', '1.1.1.1', '2606:4700:4700::1111']
+ export const DEFAULT_DIAL_MODE = DialMode.domain
+ export const DEFAULT_TCP_CHECK_HTTP_METHOD = TcpCheckHttpMethod.HEAD
+-export const DEFAULT_DISABLE_WAITING_NETWORK = false
++export const DEFAULT_DISABLE_WAITING_NETWORK = true
+ export const DEFAULT_AUTO_CONFIG_KERNEL_PARAMETER = true
+ export const DEFAULT_TLS_IMPLEMENTATION = TLSImplementation.tls
+ export const DEFAULT_UTLS_IMITATE = UTLSImitate.chrome_auto
+@@ -82,6 +82,9 @@ export const DEFAULT_GROUP_POLICY = Poli
+ export const DEFAULT_ROUTING = `
+ pname(NetworkManager, systemd-resolved, dnsmasq) -> must_direct
++dip(224.0.0.0/3, 'ff00::/8') -> direct
+ dip(geoip:private) -> direct
++domain(geosite:private) -> direct
++domain(geosite:apple-cn, geosite:google-cn, geosite:microsoft@cn, geosite:category-games@cn) -> direct
+ dip(geoip:cn) -> direct
+ domain(geosite:cn) -> direct
+ fallback: ${DEFAULT_GROUP_NAME}
+@@ -97,7 +100,8 @@ routing {
+ }
+ routing {
+   request {
+-    qname(geosite:cn) -> alidns
++    qtype(https) -> reject
++    qname(geosite:apple-cn, geosite:google-cn, geosite:microsoft@cn, geosite:category-games@cn, geosite:cn) -> alidns
+     fallback: googledns
+   }
+ }
