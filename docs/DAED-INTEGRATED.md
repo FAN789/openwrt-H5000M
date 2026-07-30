@@ -16,7 +16,8 @@
 - 保留官方 H5000M 端口、分区、MAC、EEPROM 和 sysupgrade 实现
 - DTS 仅删除三个风扇 cooling-map，CPU 降频、hot、critical 和内核热管理器保持不变
 - 不包含 PassWall2、Xray、sing-box 或其他代理管理插件
-- 不包含节点、订阅、UUID、服务器、SNI、私有规则或凭据
+- 内置经过脱敏审计的全局、DNS、路由和 `proxy` 策略组默认值
+- 不包含节点、订阅、UUID、服务器、SNI、用户、JWT 或其他凭据
 
 构建配置种子为 `configs/integrated-daed.seed`，daed 包的 GeoData 依赖替换见
 `configs/daed-package.patch`，运行时固定数据路径的补丁见
@@ -30,6 +31,12 @@
 `configs/integrated-daed.env`。生成的系统必须包含
 `/etc/h5000m-daed-build`，独立 daed 离线包也会检查该标记，禁止安装到不兼容
 内核。
+
+`h5000m-daed-defaults` 源码由独立
+[`luci-app-daed-h5000m`](https://github.com/FAN789/luci-app-daed-h5000m)
+仓库提供。它只在 `/etc/daed/wing.db` 不存在时写入清洁种子：daed 管理面板默认
+启用，代理运行状态保持停止。已有数据库与 sysupgrade 保留配置永远不会被默认值
+覆盖。
 
 ## GeoData
 
@@ -55,5 +62,5 @@ LuCI 中手动更新，或按天数和时间自动更新。更新过程校验上
 2. 内核配置包含 `CONFIG_DEBUG_INFO_BTF=y` 和 `CONFIG_XDP_SOCKETS=y`。
 3. 启动后存在 `/sys/kernel/btf/vmlinux`，daed 所需 TC/eBPF 模块可加载。
 4. 两套 GeoIP/GeoSite 的版本、大小和 SHA-256 与构建记录一致。
-5. daed 默认不启用，且系统不存在 PassWall2、Xray、sing-box 及私密配置。
+5. daed 管理服务默认启用、代理状态默认停止，种子库的节点、订阅、用户和绑定表为空。
 6. LAN/WAN、WiFi、LuCI、风扇、MT5700M、出口切换及 IPv4/IPv6 均完成实体机回归。

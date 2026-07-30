@@ -31,6 +31,8 @@ daed 依赖内核 BTF 与 XDP sockets，官方 H5000M 镜像未提供这两个�
 ImageBuilder 路线，也不向官方 ABI 固件混装内核模块。它只对风扇 cooling-map
 做最小 DTS 调整，CPU 降频、hot/critical 保护仍由内核管理。配置边界、双版本
 GeoData 和验证要求见 [`docs/DAED-INTEGRATED.md`](docs/DAED-INTEGRATED.md)。
+该变体内置脱敏的 daed 全局、DNS、路由和策略组默认值；节点、订阅、用户及凭据
+始终由最终用户自行添加。
 
 ## 独立插件
 

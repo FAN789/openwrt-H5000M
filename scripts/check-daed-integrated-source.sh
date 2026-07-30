@@ -37,6 +37,7 @@ for option in \
 	CONFIG_KERNEL_XDP_SOCKETS \
 	CONFIG_DAED_USE_KERNEL_BTF \
 	CONFIG_PACKAGE_daed \
+	CONFIG_PACKAGE_h5000m-daed-defaults \
 	CONFIG_PACKAGE_daed-geodata-bundle \
 	CONFIG_PACKAGE_luci-app-daed-geodata \
 	CONFIG_PACKAGE_luci-app-h5000m-fancontrol \
@@ -62,6 +63,7 @@ grep -q '^+.*target="_blank"' "${DASHBOARD_PATCH}"
 grep -qx "openwrt_revision=${OPENWRT_REVISION}" "${MARKER}"
 grep -qx "kernel_abi=${KERNEL_ABI}" "${MARKER}"
 grep -qx "daed_package=${DAED_VERSION}" "${MARKER}"
+grep -qx "daed_defaults=${DAED_DEFAULTS_VERSION}" "${MARKER}"
 grep -qx "geodata_manager=${GEODATA_MANAGER_VERSION}" "${MARKER}"
 grep -qx "v2fly_geoip=${V2FLY_GEOIP_VERSION}" "${MARKER}"
 grep -qx "v2fly_geosite=${V2FLY_GEOSITE_VERSION}" "${MARKER}"
