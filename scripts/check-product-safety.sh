@@ -17,7 +17,7 @@ for repo in \
 	"${ROOT}/../luci-app-mt5700m/luci-app-mt5700m" \
 	"${ROOT}/../luci-app-h5000m-fancontrol" \
 	"${ROOT}/../luci-app-h5000m-netmode" \
-	"${ROOT}/../luci-app-daed-geodata"; do
+	"${ROOT}/../luci-app-daed-h5000m/openwrt/luci-app-daed-geodata"; do
 	acl="$(find "${repo}/root/usr/share/rpcd/acl.d" -type f -name '*.json' -print -quit)"
 	jq -e . "${acl}" >/dev/null
 done
@@ -29,6 +29,6 @@ done
 ! jq -e '.[].read.file["/usr/sbin/h5000m-netmode"]' \
 	"${ROOT}/../luci-app-h5000m-netmode/root/usr/share/rpcd/acl.d/luci-app-h5000m-netmode.json" >/dev/null
 ! jq -e '.[].read.file["/usr/sbin/daed-geodata-update"]' \
-	"${ROOT}/../luci-app-daed-geodata/root/usr/share/rpcd/acl.d/luci-app-daed-geodata.json" >/dev/null
+	"${ROOT}/../luci-app-daed-h5000m/openwrt/luci-app-daed-geodata/root/usr/share/rpcd/acl.d/luci-app-daed-geodata.json" >/dev/null
 
 echo 'product safety checks passed'

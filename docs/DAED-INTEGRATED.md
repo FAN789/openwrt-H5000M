@@ -34,11 +34,12 @@
 `/etc/h5000m-daed-build`，独立 daed 离线包也会检查该标记，禁止安装到不兼容
 内核。
 
-`h5000m-daed-defaults` 源码由独立
+`h5000m-daed-defaults` 与 GeoData 管理器源码统一由独立
 [`luci-app-daed-h5000m`](https://github.com/FAN789/luci-app-daed-h5000m)
-仓库提供。它只在 `/etc/daed/wing.db` 不存在时写入清洁种子：daed 管理面板默认
-启用，代理运行状态保持停止。已有数据库与 sysupgrade 保留配置永远不会被默认值
-覆盖。
+仓库提供。该仓库是 daed、GeoData、默认策略和同 ABI 依赖的唯一发布入口；
+OpenWrt 内部仍拆分 APK，以支持安全升级和回滚。默认包只在
+`/etc/daed/wing.db` 不存在时写入清洁种子：daed 管理面板默认启用，代理运行
+状态保持停止。已有数据库与 sysupgrade 保留配置永远不会被默认值覆盖。
 
 ## GeoData
 

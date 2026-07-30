@@ -41,8 +41,7 @@ GeoData 和验证要求见 [`docs/DAED-INTEGRATED.md`](docs/DAED-INTEGRATED.md)�
 | H5000M 风扇管理 | [luci-app-h5000m-fancontrol](https://github.com/FAN789/luci-app-h5000m-fancontrol) |
 | MT5700M 模组管理及 5G 流量统计 | [luci-app-mt5700m](https://github.com/FAN789/luci-app-mt5700m) |
 | 有线 WAN / 5G 出口优先级 | [luci-app-h5000m-netmode](https://github.com/FAN789/luci-app-h5000m-netmode) |
-| daed GeoIP / GeoSite 管理 | [luci-app-daed-geodata](https://github.com/FAN789/luci-app-daed-geodata) |
-| H5000M daed 同 ABI 离线包 | [luci-app-daed-h5000m](https://github.com/FAN789/luci-app-daed-h5000m) |
+| daed、GeoIP / GeoSite 与同 ABI 离线套件 | [luci-app-daed-h5000m](https://github.com/FAN789/luci-app-daed-h5000m) |
 | PassWall2 离线安装包（可选，不集成进 daed 变体） | [luci-app-passwall2-h5000m](https://github.com/FAN789/luci-app-passwall2-h5000m) |
 
 UPnP 来自 OpenWrt 官方软件源，直接预装在主包中，不建立独立项目。
