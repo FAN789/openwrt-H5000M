@@ -32,21 +32,24 @@ UPnP 来自 OpenWrt 官方软件源，直接预装在主包中，不建立独立
 
 ## 构建基线
 
-主包跟随 OpenWrt 官方 Snapshot。稳定不变的目标参数集中在
-`configs/official-base.env`：
+公开构建仅使用经审查的 **OpenWrt 正式发布版**，不使用 Snapshot、RC 或开发分支。
+当前固定为 **25.12.6 / r33311-981c978eff / Linux 6.12.112**，目标为
+`mediatek/filogic`、设备 `hiveton_h5000m`、架构 `aarch64_cortex-a53`。
 
-- 目标：`mediatek/filogic`
-- 设备：`hiveton_h5000m`
-- 架构：`aarch64_cortex-a53`
-- 构建器：官方 OpenWrt Snapshot ImageBuilder
+`configs/official-base.env` 固定官方 release ImageBuilder 的文件名、SHA256、revision 和内核 ABI；
+构建失败不会回退到 Snapshot。每周任务复用这一正式版基线，不自动升级尚未审查的新版本。
+更新基线必须同时核对官方校验和、设备支持、内核 ABI 及构建验证结果。
 
-Snapshot 的 revision、Kernel、Kernel ABI 和 ImageBuilder SHA256 会随上游更新。
-普通构建会读取当前官方 ImageBuilder 的 SHA256，并把本次实际使用的版本与哈希写入
-`BUILD-INFO.txt`。`configs/official-base.env` 中的版本和哈希仅作为最近一次已验证的
-回退基线；发布状态以[最新 Release](https://github.com/FAN789/openwrt-H5000M/releases/latest)
-附带的 `BUILD-INFO.txt` 和 `SHA256SUMS` 为准。
+公开固件仍为纯基础系统，不包含 daed/dae、Passwall、Hijpass、MT5700M、风扇、出口优先级或定制首页。
+含插件和个人配置的集成固件仅在本地使用，集成构建配方已从当前公开主分支移除；历史提交和旧 Release 保留。
+公开主包与本地集成固件的配置、内核能力和验收记录不能混用。
 
-官方端口定义保持不变：`eth0` 是 LAN，`eth1` 是有线 WAN。MAC、WiFi EEPROM、LED 和 sysupgrade 布局全部沿用 OpenWrt 官方实现。
+版本以 [最新 Release](https://github.com/FAN789/openwrt-H5000M/releases/latest) 的
+`BUILD-INFO.txt` 为准，正式版应显示 `openwrt_version=25.12.6`、`release_channel=stable`、
+`custom_plugins_included=false` 和 `proxy_plugins_included=false`。
+旧的 `openwrt-r...` 发布是历史 Snapshot，不代表当前正式版方案。
+
+官方端口定义保持不变：`eth0` 是 LAN，`eth1` 是有线 WAN。MAC、WiFi EEPROM、LED 和 sysupgrade 布局沿用官方实现。
 
 ## 产品默认值
 
@@ -78,10 +81,12 @@ Snapshot 的 revision、Kernel、Kernel ABI 和 ImageBuilder SHA256 会随上游
 
 ## 本地构建
 
-在 x86_64 Linux 编译机执行：
+在 x86_64 Linux 编译机执行（只编译基础固件，不读取本机设备配置）：
 
 ```sh
 ./scripts/check-main-package.sh
+./scripts/check-product-safety.sh
+bash ./scripts/test-base-policy.sh
 ./scripts/build-official-base-local.sh
 ```
 
@@ -93,15 +98,9 @@ OPENWRT_LOCAL_ARTIFACTS=/home/builder/artifacts \
 ./scripts/build-official-base-local.sh
 ```
 
-需要复现实验性构建且本地缓存中仍有对应 ImageBuilder 时，可显式使用回退基线：
-
-```sh
-OPENWRT_USE_PINNED_IMAGEBUILDER=1 ./scripts/build-official-base-local.sh
-```
-
 构建脚本会校验 ImageBuilder 哈希、固件版本、Kernel ABI、LuCI、中文、UPnP、首启默认值和软件包清单。
 
-本地构建需要 `curl`、`flock`、GNU Make、`sha256sum`、GNU tar、`unsquashfs` 和 Zstandard 支持。
+本地构建需要 `curl`、`flock`、GNU Make、`sha256sum`、GNU tar、`unsquashfs`、Python 3、OpenSSL 和 Zstandard 支持。
 
 ## GitHub Actions（云编译）
 
@@ -111,21 +110,24 @@ OPENWRT_USE_PINNED_IMAGEBUILDER=1 ./scripts/build-official-base-local.sh
 
 工作流在 GitHub 托管的 `ubuntu-24.04` runner 上先执行主包边界检查，再调用同一构建脚本，避免维护两套构建逻辑。产物目录包含：
 
-- `openwrt-mediatek-filogic-hiveton_h5000m-squashfs-sysupgrade.bin`
+- `openwrt-25.12.6-mediatek-filogic-hiveton_h5000m-squashfs-sysupgrade.bin`
 - `installed-package-manifest.txt`
 - `official-base.packages`
 - `profiles.json`
 - `BUILD-INFO.txt`
 - `SHA256SUMS`
 
-发布前应核对 `custom_plugins_included=false` 和 `upnp_included=true`。
+发布前核对正式版本号、SHA256、内核 ABI、`custom_plugins_included=false`、`proxy_plugins_included=false` 和 `upnp_included=true`。安装包清单会再次检查禁止的插件/代理依赖。发布仅上传固件和校验/构建信息，不上传工作区、日志、配置备份、节点或身份文件。
+
+分支推送和 PR 只运行检查；定时、手动或版本标签触发完整云编译。定时/手动发布名包含正式版本和运行编号，不覆盖旧版本资产；标签发布指定实际源码提交。
 
 ## 仓库结构
 
 ```text
 .github/workflows/build.yml       主包每周、手动和标签云编译工作流
-configs/official-base.env         目标参数及最近一次已验证的回退基线
+configs/official-base.env         固定的正式版、内核 ABI 和 ImageBuilder SHA256
 configs/official-base.packages    主包软件清单
+configs/forbidden-base.packages   自研/代理插件禁止清单
 official-base-files/              最小产品默认值和插件公钥
 scripts/check-main-package.sh     仓库边界与隐私检查
 scripts/check-product-safety.sh   产品安全与 ACL 检查
@@ -133,3 +135,5 @@ scripts/build-official-base-local.sh  构建和固件内容验证
 ```
 
 更新回退基线或发布新固件时，必须重新完成启动、LAN/WAN、LuCI、UPnP、升级和插件安装回归，并保留该次构建的 `BUILD-INFO.txt` 与 `SHA256SUMS`。
+
+本仓库的固件编译和内容检查不等同于实机启动验收。切换正式版后须在目标设备验证启动、LAN/WAN、WiFi、LuCI、UPnP 和升级/回退；不要将本地定制固件的验收结果当作此公开基础固件的证明。

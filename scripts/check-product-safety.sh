@@ -16,22 +16,4 @@ grep -Fq '192.168.1.1|192.168.1.1/24)' "${DEFAULTS}"
 grep -Fq "uci -q add_list network.lan.ipaddr='192.168.10.1/24'" "${DEFAULTS}"
 grep -Fq 'uci -q delete network.lan.netmask' "${DEFAULTS}"
 
-for repo in \
-	"${ROOT}/../luci-app-mt5700m/luci-app-mt5700m" \
-	"${ROOT}/../luci-app-h5000m-fancontrol" \
-	"${ROOT}/../luci-app-h5000m-netmode" \
-	"${ROOT}/../luci-app-daed-h5000m/openwrt/luci-app-daed-geodata"; do
-	acl="$(find "${repo}/root/usr/share/rpcd/acl.d" -type f -name '*.json' -print -quit)"
-	jq -e . "${acl}" >/dev/null
-done
-
-! jq -e '.[].read.file["/usr/sbin/mt5700m-at"]' \
-	"${ROOT}/../luci-app-mt5700m/luci-app-mt5700m/root/usr/share/rpcd/acl.d/luci-app-mt5700m.json" >/dev/null
-! jq -e '.[].read.file["/usr/sbin/h5000m-fancontrol"]' \
-	"${ROOT}/../luci-app-h5000m-fancontrol/root/usr/share/rpcd/acl.d/luci-app-h5000m-fancontrol.json" >/dev/null
-! jq -e '.[].read.file["/usr/sbin/h5000m-netmode"]' \
-	"${ROOT}/../luci-app-h5000m-netmode/root/usr/share/rpcd/acl.d/luci-app-h5000m-netmode.json" >/dev/null
-! jq -e '.[].read.file["/usr/sbin/daed-geodata-update"]' \
-	"${ROOT}/../luci-app-daed-h5000m/openwrt/luci-app-daed-geodata/root/usr/share/rpcd/acl.d/luci-app-daed-geodata.json" >/dev/null
-
-echo 'product safety checks passed'
+echo 'base product safety checks passed'

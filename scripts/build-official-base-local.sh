@@ -11,31 +11,16 @@ DOWNLOAD_DIR="${CACHE_ROOT}/downloads"
 ARCHIVE="${DOWNLOAD_DIR}/${IMAGEBUILDER_FILE}"
 LOCK_FILE="${CACHE_ROOT}/.official-base.lock"
 
-for command in curl flock make sha256sum strings tar unsquashfs; do
+for command in curl flock make sha256sum strings tar unsquashfs python3; do
   command -v "${command}" >/dev/null 2>&1 || {
     echo "Missing required command: ${command}" >&2
     exit 1
   }
 done
 
-# The official snapshot ImageBuilder is rebuilt nightly, so its SHA256 is
-# not stable. Fetch the current value from the official directory at build
-# time; fall back to the pinned env value only when the query fails.
-official_imagebuilder_sha() {
-  curl --fail --location --silent --retry 3 --retry-delay 3 \
-    --connect-timeout 10 --max-time 20 \
-    "${OPENWRT_BASE_URL}/" 2>/dev/null \
-    | grep -F -m1 "href=\"${IMAGEBUILDER_FILE}\"" \
-    | sed -n 's/.*class="sh">\([0-9a-f]\{64\}\)<\/td>.*/\1/p'
-}
-
-if [ "${OPENWRT_USE_PINNED_IMAGEBUILDER:-0}" = "1" ]; then
-  EXPECTED_IMAGEBUILDER_SHA256="${IMAGEBUILDER_SHA256}"
-else
-  EXPECTED_IMAGEBUILDER_SHA256="$(official_imagebuilder_sha || true)"
-  [ -n "${EXPECTED_IMAGEBUILDER_SHA256}" ] \
-    || EXPECTED_IMAGEBUILDER_SHA256="${IMAGEBUILDER_SHA256}"
-fi
+# Only the reviewed official release archive is accepted. No moving snapshot,
+# scraped hash, or fallback when validation fails.
+EXPECTED_IMAGEBUILDER_SHA256="${IMAGEBUILDER_SHA256}"
 IMAGEBUILDER_DIR="${CACHE_ROOT}/imagebuilder/${EXPECTED_IMAGEBUILDER_SHA256}"
 TARGET_DIR="${IMAGEBUILDER_DIR}/bin/targets/${OPENWRT_TARGET}"
 
@@ -71,14 +56,14 @@ if [ ! -f "${IMAGEBUILDER_DIR}/.h5000m-ready" ]; then
   mv "${extract_dir}" "${IMAGEBUILDER_DIR}"
 fi
 
-# The official snapshot rolls forward every night, so revision/kernel/ABI
-# are adopted from the downloaded ImageBuilder itself (env values are
-# reference only) and recorded in BUILD-INFO for traceability.
 actual_revision="$(sed -n 's/^REVISION:=//p' "${IMAGEBUILDER_DIR}/include/version.mk" | head -1)"
-OPENWRT_REVISION="${actual_revision:-${OPENWRT_REVISION}}"
-FINAL_DIR="${ARTIFACT_ROOT}/H5000M-official-base-${OPENWRT_REVISION}"
-TEMP_DIR="${ARTIFACT_ROOT}/.H5000M-official-base-${OPENWRT_REVISION}.tmp"
-echo "Using official ImageBuilder revision: ${OPENWRT_REVISION}"
+[ "${actual_revision}" = "${OPENWRT_REVISION}" ] || {
+  echo "ImageBuilder revision differs from the reviewed stable release." >&2
+  exit 1
+}
+FINAL_DIR="${ARTIFACT_ROOT}/H5000M-official-base-${OPENWRT_VERSION}-${OPENWRT_REVISION}"
+TEMP_DIR="${ARTIFACT_ROOT}/.H5000M-official-base-${OPENWRT_VERSION}-${OPENWRT_REVISION}.tmp"
+echo "Using official stable OpenWrt ${OPENWRT_VERSION} ${OPENWRT_REVISION}"
 
 packages="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' \
   "${ROOT_DIR}/configs/official-base.packages" | tr '\n' ' ')"
@@ -95,7 +80,7 @@ make -C "${IMAGEBUILDER_DIR}" image \
 rm -rf "${TEMP_DIR}"
 mkdir -p "${TEMP_DIR}"
 
-sysupgrade="${TARGET_DIR}/openwrt-mediatek-filogic-hiveton_h5000m-squashfs-sysupgrade.bin"
+sysupgrade="${TARGET_DIR}/openwrt-${OPENWRT_VERSION}-mediatek-filogic-hiveton_h5000m-squashfs-sysupgrade.bin"
 test -s "${sysupgrade}"
 
 cp "${sysupgrade}" "${TEMP_DIR}/"
@@ -154,7 +139,7 @@ for package in "${required_packages[@]}"; do
   }
 done
 
-forbidden_packages='h5000m-fancontrol|luci-app-h5000m-fancontrol|luci-app-h5000m-netmode|luci-app-mt5700m|luci-app-mt5700m-traffic|dnsmasq-full|kmod-nft-socket|kmod-nft-tproxy|luci-app-passwall|luci-app-passwall2|luci-app-homeproxy|luci-app-mosdns|xray-core|xray-plugin|sing-box|hysteria|hysteria2|tuic-client|naiveproxy|qmodem|ubus-at-daemon|sms-tool_q|at-webserver'
+forbidden_packages="$(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "${ROOT_DIR}/configs/forbidden-base.packages" | paste -sd '|' -)"
 if grep -Eq "^(${forbidden_packages})[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt"; then
   echo "A custom or proxy plugin leaked into the official base firmware." >&2
   grep -E "^(${forbidden_packages})[[:space:]]" "${TEMP_DIR}/installed-package-manifest.txt" >&2
@@ -167,21 +152,30 @@ if ! unsquashfs -cat "${root_image}" usr/sbin/dnsmasq | strings | awk 'index($0,
 fi
 
 installed_db="$(unsquashfs -cat "${root_image}" lib/apk/db/installed)"
-# Adopt the actual kernel / ABI baked into this ImageBuilder (snapshot rolls).
-actual_kernel_abi="$(printf '%s\n' "${installed_db}" | grep -oE 'kernel=[0-9][0-9.]*~[0-9a-f]+' | head -1 | sed 's/^kernel=//')"
-OPENWRT_KERNEL="${actual_kernel_abi%%~*}"
-OPENWRT_KERNEL_ABI="${actual_kernel_abi#*~}"
-[ -n "${OPENWRT_KERNEL_ABI}" ] || {
-  echo "Could not determine kernel ABI from the ImageBuilder rootfs." >&2
+actual_kernel_package="$(printf '%s\n' "${installed_db}" | awk -F: '$1=="P" {p=$2} $1=="V" && p=="kernel" {v=substr($0,3)} END {print v}')"
+actual_kernel="${actual_kernel_package%%~*}"
+actual_abi="${actual_kernel_package#*~}"
+actual_abi="${actual_abi%%-*}"
+[ "${actual_kernel}" = "${OPENWRT_KERNEL}" ] && [ "${actual_abi}" = "${OPENWRT_KERNEL_ABI}" ] || {
+  echo "Kernel version/ABI does not match the reviewed stable release." >&2
   exit 1
 }
-echo "Using kernel ${OPENWRT_KERNEL} ABI ${OPENWRT_KERNEL_ABI}"
+release="$(unsquashfs -cat "${root_image}" etc/openwrt_release)"
+grep -Fq "DISTRIB_RELEASE='${OPENWRT_VERSION}'" <<<"${release}"
+echo "Verified kernel ${OPENWRT_KERNEL} ABI ${OPENWRT_KERNEL_ABI}"
 if grep -Eq "squashfs-root/lib/modules/${OPENWRT_KERNEL}/nft_(socket|tproxy)\\.ko$" "${root_listing}"; then
   echo "PassWall2 nft socket/tproxy modules leaked into the base firmware." >&2
   exit 1
 fi
-grep -Fq "\"version_code\":\"${OPENWRT_REVISION}\"" "${TEMP_DIR}/profiles.json"
+python3 - "${TEMP_DIR}/profiles.json" "${OPENWRT_VERSION}" "${OPENWRT_REVISION}" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1]))
+assert d['version_number']==sys.argv[2] and d['version_code']==sys.argv[3]
+assert 'hiveton_h5000m' in d['profiles']
+PY
 {
+  echo "openwrt_version=${OPENWRT_VERSION}"
+  echo "release_channel=stable"
   echo "openwrt_revision=${OPENWRT_REVISION}"
   echo "kernel=${OPENWRT_KERNEL}"
   echo "kernel_abi=${OPENWRT_KERNEL_ABI}"
@@ -190,6 +184,8 @@ grep -Fq "\"version_code\":\"${OPENWRT_REVISION}\"" "${TEMP_DIR}/profiles.json"
   echo "profile=${OPENWRT_PROFILE}"
   echo "architecture=${OPENWRT_ARCH}"
   echo "custom_plugins_included=false"
+  echo "proxy_plugins_included=false"
+  echo "daed_included=false"
   echo "passwall2_included=false"
   echo "passwall2_runtime_prerequisites_included=false"
   echo "dnsmasq_variant=compact"
@@ -201,7 +197,7 @@ grep -Fq "\"version_code\":\"${OPENWRT_REVISION}\"" "${TEMP_DIR}/profiles.json"
   echo "default_wifi_enabled=true"
   echo "ssh_password_authentication=true"
 } > "${TEMP_DIR}/BUILD-INFO.txt"
-(cd "${TEMP_DIR}" && sha256sum "$(basename "${sysupgrade}")" > SHA256SUMS)
+(cd "${TEMP_DIR}" && find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
 
 rm -rf "${FINAL_DIR}"
 mv "${TEMP_DIR}" "${FINAL_DIR}"

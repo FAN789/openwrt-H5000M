@@ -20,7 +20,7 @@ for path in "${required_paths[@]}"; do
   }
 done
 
-for directory in files packages patches; do
+for directory in files packages patches integrated-daed-files; do
   if [ -d "${ROOT_DIR}/${directory}" ] && \
      find "${ROOT_DIR}/${directory}" \( -type f -o -type l \) -print -quit | grep -q .; then
     echo "Legacy custom source files must not exist in the main package: ${directory}" >&2
@@ -30,6 +30,9 @@ done
 
 # shellcheck source=../configs/official-base.env
 source "${BASE_ENV}"
+[[ "${OPENWRT_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+[ "${OPENWRT_BASE_URL}" = "https://downloads.openwrt.org/releases/${OPENWRT_VERSION}/targets/mediatek/filogic" ]
+[ "${IMAGEBUILDER_FILE}" = "openwrt-imagebuilder-${OPENWRT_VERSION}-mediatek-filogic.Linux-x86_64.tar.zst" ]
 [[ "${OPENWRT_REVISION}" =~ ^r[0-9]+-[0-9a-f]+$ ]]
 [[ "${IMAGEBUILDER_SHA256}" =~ ^[0-9a-f]{64}$ ]]
 [ "${OPENWRT_PROFILE}" = "hiveton_h5000m" ]
@@ -66,14 +69,7 @@ for package in "${required_packages[@]}"; do
   }
 done
 
-forbidden_packages=(
-  h5000m-fancontrol luci-app-h5000m-fancontrol luci-app-h5000m-netmode
-  luci-app-mt5700m luci-app-mt5700m-traffic
-  dnsmasq-full kmod-nft-socket kmod-nft-tproxy
-  luci-app-passwall luci-app-passwall2 luci-app-homeproxy luci-app-mosdns
-  xray-core xray-plugin sing-box hysteria hysteria2 tuic-client naiveproxy
-  qmodem ubus-at-daemon sms-tool_q at-webserver
-)
+mapfile -t forbidden_packages < <(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "${ROOT_DIR}/configs/forbidden-base.packages")
 for package in "${forbidden_packages[@]}"; do
   if has_package "${package}"; then
     echo "Plugin-owned package is forbidden in the main package: ${package}" >&2
